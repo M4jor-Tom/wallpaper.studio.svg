@@ -1,7 +1,3 @@
-//! parameters.proto -> Rust. prost-build generates the messages; pbjson-build
-//! reads the descriptor set it emits and adds the canonical proto3 JSON mapping
-//! on top, which is the part this program actually uses -- nothing here ever
-//! touches the wire format.
 use std::{env, fs, io::Result, path::PathBuf};
 
 fn main() -> Result<()> {

@@ -1,13 +1,5 @@
 //! CPython's `random` module, reimplemented for the calls this program makes.
-//!
-//! The layout of every render is a Mersenne Twister stream keyed by a *string*
-//! seed, and the golden corpus pins that stream byte for byte. Choosing a Rust
-//! RNG would have been less code and would have moved every hexagon, so this
-//! reproduces CPython exactly: MT19937 with `init_by_array`, seeded the way
-//! `random.seed(str)` seeds, and the same rejection-sampling and pool
-//! algorithms on top -- `_randbelow`, `shuffle` and `sample` all consume a
-//! specific number of 32-bit words, so a "compatible" shortcut desynchronises
-//! everything drawn after it.
+//! The golden corpus pins this stream: each call must consume exactly CPython's number of 32-bit words.
 use sha2::{Digest, Sha512};
 
 const N: usize = 624;
@@ -16,18 +8,13 @@ const MATRIX_A: u32 = 0x9908_b0df;
 const UPPER_MASK: u32 = 0x8000_0000;
 const LOWER_MASK: u32 = 0x7fff_ffff;
 
-/// One `random.Random` instance.
 pub struct PyRandom {
     mt: [u32; N],
     mti: usize,
 }
 
 impl PyRandom {
-    /// `random.Random(s)` for a string seed. CPython turns the string into an
-    /// integer -- `int.from_bytes(s + sha512(s), "big")` -- then splits that
-    /// integer into little-endian 32-bit words and calls `init_by_array`. The
-    /// sha512 is not decoration: it is what makes short, similar seeds like
-    /// "star:0:3:4" and "star:0:3:5" produce unrelated streams.
+    /// `random.Random(s)`: `int.from_bytes(s + sha512(s))`, split into LE 32-bit words for `init_by_array`.
     pub fn new(seed: &str) -> Self {
         let mut be = seed.as_bytes().to_vec();
         be.extend_from_slice(&Sha512::digest(seed.as_bytes()));
@@ -108,24 +95,19 @@ impl PyRandom {
         y ^ (y >> 18)
     }
 
-    /// `random()` -- 53 bits of randomness, assembled from two words exactly as
-    /// `genrand_res53` does. Two words, always: taking one would halve the
-    /// stream consumption and desynchronise everything after it.
+    /// `random()` -- always two words, as `genrand_res53`.
     pub fn random(&mut self) -> f64 {
         let a = self.genrand_u32() >> 5;
         let b = self.genrand_u32() >> 6;
         (a as f64 * 67108864.0 + b as f64) * (1.0 / 9007199254740992.0)
     }
 
-    /// `getrandbits(k)` for `1 <= k <= 32`, which is all this program needs.
     pub fn getrandbits(&mut self, k: u32) -> u32 {
         assert!((1..=32).contains(&k), "getrandbits({k}) is out of range");
         self.genrand_u32() >> (32 - k)
     }
 
-    /// `_randbelow(n)` -- rejection sampling on `n.bit_length()`, so the number
-    /// of words consumed depends on the values drawn. A modulo shortcut would
-    /// be both biased and desynchronising.
+    /// `_randbelow(n)` -- rejection sampling; a modulo shortcut would desync the stream.
     fn randbelow(&mut self, n: u32) -> u32 {
         if n == 0 {
             return 0;
@@ -139,13 +121,11 @@ impl PyRandom {
         }
     }
 
-    /// `randrange(n)`.
     pub fn randrange(&mut self, n: u32) -> u32 {
         self.randbelow(n)
     }
 
-    /// `shuffle(x)` -- Fisher-Yates walking down, matching CPython's loop
-    /// direction.
+    /// `shuffle(x)` -- Fisher-Yates walking down, as CPython.
     pub fn shuffle<T>(&mut self, xs: &mut [T]) {
         for i in (1..xs.len()).rev() {
             let j = self.randbelow(i as u32 + 1) as usize;
@@ -153,10 +133,7 @@ impl PyRandom {
         }
     }
 
-    /// `sample(range(n), k)`. CPython picks between a pool and a set algorithm
-    /// by size; every call here is `sample(range(6), 6)`, far below the
-    /// threshold (`setsize` = 85 for k=6), so the pool branch is the only one
-    /// that can be taken.
+    /// `sample(range(n), k)`, pool branch only: every call here is far below CPython's set threshold.
     pub fn sample(&mut self, n: usize, k: usize) -> Vec<usize> {
         let mut pool: Vec<usize> = (0..n).collect();
         let mut out = Vec::with_capacity(k);
@@ -168,21 +145,16 @@ impl PyRandom {
         out
     }
 
-    /// `uniform(a, b)`.
     pub fn uniform(&mut self, a: f64, b: f64) -> f64 {
         a + (b - a) * self.random()
     }
 
-    /// `choice(seq)` over an ASCII set.
     pub fn choice(&mut self, s: &[u8]) -> u8 {
         s[self.randbelow(s.len() as u32) as usize]
     }
 }
 
-/// Per-cell stream. Keyed by coordinates rather than draw order so a cell's
-/// stars never shift because some *other* cell consumed a different number of
-/// values -- that is what keeps the layout identical across every background,
-/// icon and overlay combination.
+/// Per-cell stream keyed by coordinates, so one cell's draws never shift another's.
 pub fn cell_rng(tag: &str, seed: u32, r: i32, c: i32) -> PyRandom {
     PyRandom::new(&format!("{tag}:{seed}:{r}:{c}"))
 }
@@ -191,9 +163,7 @@ pub fn cell_rng(tag: &str, seed: u32, r: i32, c: i32) -> PyRandom {
 mod tests {
     use super::*;
 
-    /// Vectors captured from the interpreter this corpus was generated with
-    /// (CPython 3.14.7). If any of these move, every hexagon in every golden
-    /// moves with them.
+    /// Captured from CPython 3.14.7. If these move, every golden moves.
     #[test]
     fn matches_cpython() {
         let mut r = PyRandom::new("trihex:0");
@@ -213,7 +183,6 @@ mod tests {
             [1391481750, 664579869, 2064991622, 3668470967]
         );
 
-        // random.sample(range(6), 6) -- the call pat_trihex makes per hexagon
         let mut r = PyRandom::new("trihex:0");
         assert_eq!(r.sample(6, 6), vec![2, 1, 3, 5, 4, 0]);
 
@@ -222,7 +191,6 @@ mod tests {
         r.shuffle(&mut xs);
         assert_eq!(xs, vec![9, 8, 1, 0, 3, 4, 6, 7, 2, 5]);
 
-        // the per-column draws pat_matrix makes, in order
         assert_eq!(
             PyRandom::new("rain:0:0:3").uniform(18.0, 34.0),
             18.93273603129014

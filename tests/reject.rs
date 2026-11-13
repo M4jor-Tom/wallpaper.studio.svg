@@ -1,5 +1,3 @@
-//! The config boundary: every rejection exits 2, whether the schema catches it
-//! or `validate` does.
 use std::io::Write;
 
 fn rejected(config: Option<&str>, why: &str) {
@@ -55,16 +53,13 @@ fn every_bad_config_exits_two() {
     rejected(None, "a missing config file must be rejected");
 }
 
-// the control: without this, a run() that returned 2 unconditionally would pass
-// all ten rejections above.
+// the control: otherwise a run() that always returned 2 would pass every rejection above
 #[test]
 fn a_valid_config_exits_zero() {
-    // its own directory: #[test] functions run in parallel, and `rejected`
-    // above already claims the pid-keyed one.
+    // own directory: tests run in parallel
     let dir = std::env::temp_dir().join(format!("bgsvg-accept-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("parameters.json");
-    // stdout sink: no scratch output directory or file needed.
     let mut f = std::fs::File::create(&path).unwrap();
     f.write_all(br#"{"output":{"stdout":{}}}"#).unwrap();
     let code = bgsvg::run(&[path.to_string_lossy().into_owned()]);

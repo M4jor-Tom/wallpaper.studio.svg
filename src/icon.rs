@@ -1,4 +1,3 @@
-//! The centre glyph: the hexagon/triangle badge and the ship.
 use std::f64::consts::PI;
 
 use askama::Template;
@@ -10,29 +9,11 @@ use crate::style::PAL;
 /// stroke width, stroke opacity, rotate-origin-y%.
 type Ring = (f64, usize, f64, &'static str, f64, f64, Option<f64>);
 
-/// A ring's class and its whole `style` attribute value, or neither -- one
-/// field, not two, because the two strings are only ever meaningful together.
-/// `cls` picks `rspin` vs `spin` by ring index; `style` is the complete
-/// `animation-duration:...;transform-origin:...` value, already assembled
-/// (`24 - idx * 3` for the duration, the ring table's `oy` for the origin).
-/// Splitting this into `cls: Option<&str>` plus a separate `style:
-/// Option<String>` would let a future edit set one without the other -- it
-/// would still compile, and the template's `.unwrap()` on the other field
-/// would only fail at render time, pointing into generated code instead of
-/// at the actual bug. One `Option<RingMotion>` makes "both or neither"
-/// structural instead of a convention the next reader has to keep by hand.
 struct RingMotion {
     cls: &'static str,
     style: String,
 }
 
-/// One ring of `hexatri.svg`'s badge, already reduced to what the template
-/// substitutes verbatim. `swd`/`o` are `String`, pre-rendered through `fmt`,
-/// not the `f64`s the ring table holds -- a template may only substitute, so
-/// letting it format a float would hand it a say over the glyph's bytes.
-/// `motion` is `None` when the ring doesn't rotate or `rotate` is false, so
-/// the template's `{% if let %}` is the only conditional left, never an
-/// assembler.
 struct HexRing {
     points: String,
     col: &'static str,
@@ -41,9 +22,6 @@ struct HexRing {
     motion: Option<RingMotion>,
 }
 
-/// The template context for `hexatri.svg`: the four rings plus the solid
-/// centre hexagon, which shares the badge's `a` colour and is not itself a
-/// `HexRing` (it never rotates and has no stroke-width/opacity pair).
 #[derive(askama::Template)]
 #[template(path = "hexatri.svg")]
 struct Hexatri {
@@ -52,9 +30,6 @@ struct Hexatri {
     core: String,
 }
 
-/// Nested hexagon<->triangle glyph. `rotate` -> the two triangle rings
-/// counter-spin inside the static hex frame (rotation centres pinned to the
-/// icon centre via transform-origin, so no wobble).
 pub fn ico_hexatri(rotate: bool) -> String {
     let (a, b) = (PAL.a.as_str(), PAL.b.as_str());
     let rings: [Ring; 4] = [
@@ -90,22 +65,12 @@ pub fn ico_hexatri(rotate: bool) -> String {
         .expect("writing to a String")
 }
 
-/// One shaded facet, already reduced to what `ship.svg` substitutes verbatim:
-/// the polygon's `points`, which palette `ramp` it sits under (matching the
-/// `id="shp{ramp}"` gradient `ico_ship` builds for the same key), and its
-/// `opacity`, which lands on `fill-opacity`. `opacity` is a `String`,
-/// pre-rendered through `fmt`, not the `f64` it started as -- see `Ship`'s
-/// docstring for why that is not optional.
 struct ShipFacet {
     points: String,
     ramp: &'static str,
     opacity: String,
 }
 
-/// One exhaust streak. `x1`/`x2` are both stored, even though `x1 == -x2`,
-/// because the template may only substitute -- it must not assemble a
-/// coordinate by concatenating a sign onto a magnitude at render time. See
-/// `Ship`'s docstring for the same rule applied to the rest of the glyph.
 struct Exhaust {
     x1: i32,
     x2: i32,
@@ -113,17 +78,6 @@ struct Exhaust {
     o: String,
 }
 
-/// The template context for `ship.svg`. This struct, not the ship, is what
-/// `ico_ship` actually builds: every field is either a `&'static str` (an
-/// already-interned palette colour) or a `String`/`i32` that Rust finished
-/// computing before the struct was assembled -- never a raw `f64`. That is
-/// the mechanism, not a style choice: this crate's boundary is "geometry
-/// stays in Rust, a template may not derive a vertex or a coordinate", and a
-/// template has no way to violate that if the only inputs it ever sees are
-/// values Rust already reduced to their final digits. Handing the template
-/// an `f64` instead would let its own float-formatting pick the glyph's
-/// bytes, which is precisely the byte-exactness this struct exists to keep
-/// out of its reach.
 #[derive(askama::Template)]
 #[template(path = "ship.svg")]
 struct Ship {
@@ -139,54 +93,16 @@ struct Ship {
     exhaust: Vec<Exhaust>,
 }
 
-/// Cloaked delta spaceship on the same 200-unit grid as `ico_hexatri`: a sheet
-/// folded along its spine, read as four facets rather than as an outline. Same
-/// silhouette as ever -- the facets tile the hull quad exactly, so nothing
-/// about the footprint moved. No rotate variant: a spinning ship reads as a
-/// crash.
-///
-/// RELIEF IS VALUE, NOT LINEWORK. The four facets meet along the spine and
-/// carry nothing but a fill: lit wing, lit ridge face, shadowed ridge face,
-/// shadowed wing, stepped 0.04 -> 0.28. Stroking the interior folds as well
-/// would read as wireframe -- an object seen through, not a solid seen lit --
-/// so the folds are left to the value step alone, and only the silhouette
-/// keeps its outline.
-///
-/// ONE LIGHT, NOT FOUR. Every facet draws the same ramp, transparent at the
-/// upper left and opaque at the lower right, i.e. lit from where the canvas
-/// gradient is already brightest. That takes gradientUnits="userSpaceOnUse"
-/// for the same reason #bg does: the default objectBoundingBox restarts the
-/// ramp inside every triangle, which gives four separately-lit shards instead
-/// of one solid under one light, and the fold stops reading.
-///
-/// THE CLOAK IS THE TRANSLUCENCY. Nothing here reaches 0.3, so the halo and
-/// the lattice come through the hull. That also keeps the glyph inside the
-/// contrast budget: filled, but still spending less ink than the old double
-/// outline.
-///
-/// The crest highlight is the one bright element, canvas colour fading aft.
-/// On a high-key page a highlight cannot out-light the paper, so it reads
-/// only where it lies over the shadowed ridge face -- light added by removing
-/// tint, the same inversion the rain's head uses. The ridge stays 35% of the
-/// half-span wide, so the narrow-shape-against-wide-shape rule still holds --
-/// the narrow shape is now a fold instead of a second outline. Any narrower
-/// and its two faces are slivers rather than planes, and the fold stops
-/// reading as one.
+/// Cloaked delta ship: four translucent facets tiling the hull. No rotate variant: a spinning ship reads as a crash.
+/// Relief is fill value, not linework: only the silhouette is stroked. One shared `userSpaceOnUse` ramp, so it
+/// reads as one solid under one light. Nothing reaches 0.3 opacity: the translucency is the cloak.
 pub fn ico_ship() -> String {
     let (a, b, lit) = (PAL.a.as_str(), PAL.b.as_str(), PAL.bg.0.as_str());
     let (n, r, l, t) = ((0.0, -80.0), (68.0, 46.0), (-68.0, 46.0), (0.0, 20.0));
     // ridge feet, 35% along the trailing edges
     let (kl, kr) = ((-23.8, 29.1), (23.8, 29.1));
-    // One source for the crest, so its fade cannot stop landing on its own
-    // ends. It starts short of the nose: the hull stroke overdraws the apex,
-    // so the highlight emerges from under the point instead of fighting it
-    // for the pixel.
     let (cy0, cy1) = (n.1 + 6.0, t.1);
-    // The ramp is deliberately shallow (0.5 -> 1, not 0 -> 1): it is the
-    // shading *within* a plane, and a wide one drowns the step *between*
-    // planes, which is the thing actually doing the relief. Four gently-lit
-    // shards read as one flat smear; four flat-ish planes at four values read
-    // as a fold.
+    // shallow ramp (0.5 -> 1): the step between planes carries the relief, not the shading within one
     let ramps: Vec<(&'static str, &'static str)> = vec![("a", a), ("b", b)];
     let facets = [
         ([n, kl, l], "a", 0.09),
@@ -234,9 +150,6 @@ pub fn ico_ship() -> String {
 mod tests {
     use super::*;
 
-    /// Pull one attribute's value out of a `<polygon .../>` (or `<line
-    /// .../>`) tag fragment. The glyph's own format is the only grammar these
-    /// tests need to know.
     fn attr<'a>(tag: &'a str, name: &str) -> &'a str {
         let key = format!("{name}=\"");
         let start = tag.find(&key).expect("attribute present") + key.len();
@@ -253,7 +166,6 @@ mod tests {
             .collect()
     }
 
-    /// Every `<polygon ...>` tag in the glyph, as its raw source slice.
     fn polygons(glyph: &str) -> Vec<&str> {
         glyph
             .match_indices("<polygon ")
@@ -264,7 +176,6 @@ mod tests {
             .collect()
     }
 
-    /// The Rust of `background.py:947-950`: the shoelace formula.
     fn area(poly: &[(f64, f64)]) -> f64 {
         let n = poly.len();
         let sum: f64 = (0..n)
@@ -277,7 +188,6 @@ mod tests {
         sum.abs() / 2.0
     }
 
-    /// The four shaded facets: the Rust of `background.py:953`.
     fn facet_polys(glyph: &str) -> Vec<(Vec<(f64, f64)>, f64)> {
         polygons(glyph)
             .into_iter()
@@ -293,7 +203,6 @@ mod tests {
             .collect()
     }
 
-    /// The one silhouette outline: the Rust of `background.py:958-959`.
     fn hull_poly(glyph: &str) -> Vec<(f64, f64)> {
         let hulls: Vec<&str> = polygons(glyph)
             .into_iter()
@@ -307,13 +216,7 @@ mod tests {
         parse_points(attr(hulls[0], "points"))
     }
 
-    /// The ship must read as a folded solid: four facets that tile the hull
-    /// exactly (so the cloak never moved the silhouette), no two at the same
-    /// value (so every fold has relief), none opaque (so it stays a cloak), and
-    /// every ramp spanning the glyph rather than restarting inside a facet.
-    ///
-    /// Asserted against the glyph alone, never the page: the lattice is
-    /// thousands of polygons that would match these patterns by coincidence.
+    /// Asserted against the glyph alone: the lattice would match these patterns by chance.
     #[test]
     fn the_ship_is_a_folded_solid() {
         let glyph = ico_ship();
@@ -340,9 +243,6 @@ mod tests {
         );
     }
 
-    /// `background.py:958-959` asserts `len(hull) == 1` before indexing it --
-    /// a second silhouette outline must fail loudly, not silently pick the
-    /// first one and let a regressed hull area slip through undetected.
     #[test]
     #[should_panic(expected = "the ship needs exactly one silhouette outline")]
     fn hull_poly_rejects_a_second_silhouette() {
@@ -350,8 +250,6 @@ mod tests {
         hull_poly(glyph);
     }
 
-    /// rotate is hexatri's own animation: the two triangle rings counter-spin
-    /// inside a static hex frame, and nothing else in the glyph moves.
     #[test]
     fn hexatri_spins_only_its_triangles() {
         let spinning = ico_hexatri(true);

@@ -1,4 +1,3 @@
-//! The hexagon lattice and the sparse triangles laid over it.
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
 
@@ -15,20 +14,14 @@ enum Role {
     Inter,
 }
 
-/// One triangle: the two vertices of the edge it sits on, its apex, and its
-/// fill colour.
 type Tri = ((f64, f64), (f64, f64), (f64, f64), String);
 
-/// Which hexagons hold a triangle, which are pierced by one, and the triangles
-/// themselves. Geometry only -- it never looks at the motion, image, icon or
-/// overlay, which is what makes one seed give one layout everywhere.
 struct Plan {
     role: HashMap<(i32, i32), Role>,
     poked: HashSet<(i32, i32)>,
     tris: Vec<Tri>,
 }
 
-/// Assign roles + triangles (geometry is independent of bg/fg).
 fn assign(lat: &Lattice, rng: &mut PyRandom) -> Plan {
     let hexset: HashSet<(i32, i32)> = lat.hexes.iter().copied().collect();
     let mut plan = Plan {
@@ -39,9 +32,7 @@ fn assign(lat: &Lattice, rng: &mut PyRandom) -> Plan {
     let mut order = lat.hexes.clone();
     rng.shuffle(&mut order);
     for (r, c) in order {
-        // skip -> fewer triangles. Python's `or` short-circuits, so a hexagon
-        // that already has a role draws no value at all; consuming one here
-        // would desynchronise every hexagon after it.
+        // Python's `or` short-circuits: a hexagon that has a role draws nothing.
         if plan.role.contains_key(&(r, c)) || rng.random() > 0.5 {
             continue;
         }
@@ -53,7 +44,7 @@ fn assign(lat: &Lattice, rng: &mut PyRandom) -> Plan {
             if plan.role.get(&n) == Some(&Role::Holder) || plan.poked.contains(&n) {
                 continue;
             }
-            // V[(k - 1) % 6]: at k = 0 Python wraps to V[5], so `+ 5` here.
+            // V[(k - 1) % 6]: Python wraps to V[5] at k = 0.
             let (v1, v2) = (v[(k + 5) % 6], v[k]);
             let mid = ((v1.0 + v2.0) / 2.0, (v1.1 + v2.1) / 2.0);
             let apex = (2.0 * mid.0 - cx, 2.0 * mid.1 - cy);
@@ -77,14 +68,7 @@ fn assign(lat: &Lattice, rng: &mut PyRandom) -> Plan {
     plan
 }
 
-/// Which hexagons become windows onto the void. A cell qualifies only if the
-/// whole hexagon clears the icon zone (centre distance >= clear_r + s), the same
-/// exclusion the triangles obey.
-///
-/// `every` (background.motion CLOSEOPEN) takes the entire eligible field instead
-/// of a SPACE_FRAC sample: the blinds hold all but a handful shut at any
-/// instant, so sparseness moves from space to time and a window can open
-/// anywhere rather than always in the same seven places.
+/// Hexagons that become windows; the whole cell must clear the icon zone. `every` (CLOSEOPEN) takes them all.
 pub fn space_cells(lat: &Lattice, seed: u32, every: bool) -> HashSet<(i32, i32)> {
     let mut out = HashSet::new();
     for (r, c) in &lat.hexes {
@@ -92,8 +76,7 @@ pub fn space_cells(lat: &Lattice, seed: u32, every: bool) -> HashSet<(i32, i32)>
         if (cx - lat.cx0).hypot(cy - lat.cy0) < lat.clear_r + lat.s {
             continue;
         }
-        // Python's `or` short-circuits: under `every` no cell touches its own
-        // stream at all, and an ineligible cell never reaches the draw either.
+        // short-circuit as in Python: no draw under `every`, none for ineligible cells
         if every || cell_rng("pick", seed, *r, *c).random() < SPACE_FRAC {
             out.insert((*r, *c));
         }
@@ -101,10 +84,7 @@ pub fn space_cells(lat: &Lattice, seed: u32, every: bool) -> HashSet<(i32, i32)>
     out
 }
 
-/// background.motion CLOSEOPEN: the timing of one cell's shutter, drawn from the
-/// cell's own stream rather than draw order. The blind and the window it covers
-/// are given this same string, so the window can switch itself off exactly while
-/// it is hidden -- one value, two users, no way for them to fall out of step.
+/// CLOSEOPEN shutter timing. The blind and its window share this one string, so they cannot desync.
 fn blind_phase(seed: u32, r: i32, c: i32) -> String {
     let mut g = cell_rng("blind", seed, r, c);
     let d = BLIND_S.0 + g.random() * (BLIND_S.1 - BLIND_S.0);
@@ -113,12 +93,6 @@ fn blind_phase(seed: u32, r: i32, c: i32) -> String {
     format!("animation-delay:-{delay}s;animation-duration:{}s", fmt(d))
 }
 
-/// One star, already reduced to what `trihex.svg` substitutes verbatim.
-/// `bloom` is the halo radius of the two anchor stars and `None` for the rest,
-/// so the template's `{% if let %}` is the whole of that decision -- it never
-/// counts stars itself. `bloom` and `r` are two separate numbers, not one
-/// scaled twice: the halo is measured off the plain radius and the star only
-/// grows afterwards, an order `space_cell` keeps and the template cannot see.
 struct Star {
     x: String,
     y: String,
@@ -127,23 +101,7 @@ struct Star {
     bloom: Option<String>,
 }
 
-/// One hexagon of procedural deep space, reduced to substitutable values.
-///
-/// `phase` is ONE field with TWO consumers. `trihex.svg` hands this same
-/// string to the `<g class="win">` holding the stars and to the
-/// `<polygon class="blind">` drawn over it, and the blind exists exactly when
-/// the phase does -- so the window switches off for precisely the span its
-/// own shutter covers it. Switching off at all is the point: SVG does no
-/// occlusion culling, so without it every star under a shut blind is
-/// repainted each frame for nothing. A separate window phase and blind
-/// phase is what would let the two drift apart and pop a starfield in over a
-/// closed blind; see `blind_phase`. The blind is painted `url(#bg)`, canvas
-/// colour, so a shut one is indistinguishable from any other lattice cell --
-/// which is why that gradient is `userSpaceOnUse` (see `svg.rs`'s `Defs`).
-///
-/// `rot` is the whole `rotate(...)` transform value rather than the bare
-/// angle: a template may only substitute, so it must not be the thing that
-/// puts the spaces between an angle and the centre it turns about.
+/// `phase` feeds both the window and its blind: the window hides while covered (SVG has no occlusion culling).
 struct VoidCell {
     cid: String,
     poly: String,
@@ -157,13 +115,6 @@ struct VoidCell {
     stars: Vec<Star>,
 }
 
-/// One hexagon of procedural deep space: clipped void ground, a faint nebula,
-/// then seeded stars. Drawn, never embedded -- no assets, crisp at any size.
-///
-/// `phase` is forwarded straight through to `VoidCell`; see there for why it
-/// exists.
-// the reference's own signature (background.py:207); the caller already holds
-// the formatted polygon, so there is nothing here to bundle away
 #[allow(clippy::too_many_arguments)]
 fn space_cell(
     seed: u32,
@@ -190,8 +141,6 @@ fn space_cell(
             let mut rad = s * (0.008 + g.random().powi(2) * 0.022);
             let o = 0.35 + g.random() * 0.6;
             let bloom = if i < 2 {
-                // two anchor stars get a soft bloom, sized off the plain
-                // radius -- the star itself only grows afterwards
                 let b = fmt(rad * 3.5);
                 rad *= 1.4;
                 Some(b)
@@ -221,29 +170,17 @@ fn space_cell(
     }
 }
 
-/// One triangle. `style` is the complete `animation-delay:...s` value under
-/// background.motion SCAN and `None` otherwise. The `wavef` class it pairs
-/// with is a literal in the template rather than a second field, so there is
-/// nothing here for this `Option` to fall out of agreement with.
 struct TriFill {
     points: String,
     col: String,
     style: Option<String>,
 }
 
-/// A hexagon border's class and its whole `style` value, or neither -- one
-/// field, not two, for the reason `icon.rs`'s `RingMotion` spells out: two
-/// independent `Option`s can be set apart from each other, and the template
-/// would only discover it at render time.
 struct HexAnim {
     cls: &'static str,
     style: String,
 }
 
-/// One hexagon border. `fill` and `fill_opacity` do stay two fields, because
-/// only the `light` arm paints a (transparent) fill for its keyframes to
-/// flash up, and an absent `fill_opacity` simply renders nothing -- unlike a
-/// split class/style pair there is no unwrap for them to disagree through.
 struct HexBorder {
     poly: String,
     anim: Option<HexAnim>,
@@ -252,38 +189,8 @@ struct HexBorder {
     so: String,
 }
 
-/// The template context for `trihex.svg`. `templates/trihex.svg` walks
-/// `voids`, then `tris`, then `hexes` as three separate loops in that order,
-/// and THAT -- not the order these fields are declared here -- is what fixes
-/// the layering: voids sit under the triangles, so a translucent triangle
-/// crossing a window reads as a shard catching light, and the borders go on
-/// top of everything. Reordering these fields would change nothing;
-/// reordering the template's loops would silently change the picture.
-///
-/// `void`, `star`, `fill_o`, `ink` and `sw` are whole-render constants held
-/// once here instead of copied onto every cell, star and hexagon -- at 1080p
-/// that is roughly two thousand hexagons and two thousand stars. There is no
-/// palette `a` beside them: the one element that paints it is the `light`
-/// border, and it carries the colour on `HexBorder::fill` precisely so the
-/// template never has to pick between `a` and `none` itself.
-///
-/// Four of `trihex.svg`'s conditionals wrap an optional *attribute group*
-/// inside an open tag, and each one is written `{% if ... +%} attr="..."
-/// {% endif +%}`. Those `+` markers are load-bearing: `whitespace =
-/// "suppress"` (`askama.toml`) trims the whitespace touching a `{% %}` block
-/// whether or not the rest of that text node is itself blank. On the opening
-/// `{% if ... +%}` the text that follows is ` class="win" style="` -- not
-/// whitespace-only -- yet its leading space would still be stripped, running
-/// `<g` into `class`; on `{% endif +%}` it would run `<polygon` straight into
-/// `points` and `fill="none"` straight into `stroke`. Each `+` keeps its one
-/// separating space, and the closing one stays on `{% endif %}` so it is
-/// emitted whether or not the branch was taken -- exactly what
-/// `<polygon points=...>` needs when there is no class to announce.
-/// `templates/root.svg` used to carry the same pair between two `{{ }}`
-/// expressions and no longer does: Rust hands it the finished `viewBox` and
-/// `transform` values instead (`svg.rs`'s `Root`), which is the better fix
-/// wherever the separator sits between two interpolations rather than, as
-/// here, between a tag name and an attribute the template may not emit at all.
+/// Layering is fixed by the template's loop order (voids, tris, hexes), not by field order.
+/// The `+%}` markers in trihex.svg are load-bearing: they keep the space before an optional attribute.
 #[derive(askama::Template)]
 #[template(path = "trihex.svg")]
 struct Trihex {
@@ -297,13 +204,10 @@ struct Trihex {
     sw: String,
 }
 
-/// Hexagon lattice (spacing 2s) + sparse triangles under the holder/
-/// intersector rule, styled per the chosen background animation.
 pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRandom) -> String {
     let sw = fmt(lat.u * 0.0013);
     let plan = assign(lat, rng);
 
-    // --- render ---
     let scan_delay = |x: f64, y: f64| fmt(-((x + y) / (w as f64 + h as f64)) * 5.0);
     let closeopen = scene.motion == background::Motion::Closeopen;
     let space = if scene.image == background::Image::Starfield {
@@ -313,11 +217,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
     };
 
     let mut voids = Vec::new();
-    // eager, and it has to stay that way: this loop's `lights` non-void branch
-    // draws two values per hex from the global stream, and those draws must
-    // land in `lat.hexes` order immediately after `assign()`'s -- not because
-    // of `tris` or `voids`, which never touch the global stream, but because
-    // any other order here desyncs every hexagon drawn after the first one.
+    // Eager on purpose: the `lights` branch draws from the global stream in `lat.hexes` order, right after `assign()`.
     let mut hexes = Vec::with_capacity(lat.hexes.len());
     for (r, c) in &lat.hexes {
         let (cx, cy) = lat.center(*r, *c);
@@ -335,9 +235,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
                 closeopen.then(|| blind_phase(scene.seed, *r, *c)),
             ));
         }
-        // A window's border sits brighter than the field to mark the few portals --
-        // but under closeopen *every* cell is a portal, so that would just raise the
-        // whole lattice (rule 1). There the blind opening is the only marker.
+        // Window borders sit brighter, except under closeopen where every cell is a window.
         let so = if void && !closeopen {
             SPACE_STROKE_O
         } else {
@@ -421,8 +319,6 @@ mod tests {
     use crate::params::Glyph;
     use crate::svg::build_svg;
 
-    /// A starfield render with nothing else turned on, which is what
-    /// `background.py`'s `build_svg(w, h, bg=..., bg_image="space")` defaults to.
     fn starfield(motion: background::Motion) -> Scene {
         Scene {
             seed: 0,
@@ -433,8 +329,6 @@ mod tests {
         }
     }
 
-    /// The style strings of every `class="<class>"` element, in document order --
-    /// the `re.findall(r'class="win" style="([^"]+)"', svg)` of the Python.
     fn styles<'a>(svg: &'a str, class: &str) -> Vec<&'a str> {
         let key = format!("class=\"{class}\" style=\"");
         svg.match_indices(&key)
@@ -445,10 +339,6 @@ mod tests {
             .collect()
     }
 
-    /// Space cells must clear the icon zone entirely, stay sparse, never take
-    /// the fill-flashing .light class (which would wash the starfield out), and
-    /// under background.motion CLOSEOPEN carry exactly one blind apiece,
-    /// layered under the triangles.
     #[test]
     fn space_cells_clear_the_icon_zone_and_keep_their_blinds() {
         for (w, h) in [(1920u32, 1080u32), (1080, 1920)] {
@@ -491,7 +381,6 @@ mod tests {
                 "closeopen must widen the window pool, not reuse the sparse one"
             );
             for (r, c) in &every {
-                // the icon zone stays clear even so
                 let (cx, cy) = lat.center(*r, *c);
                 assert!(
                     (cx - lat.cx0).hypot(cy - lat.cy0) - lat.s >= lat.clear_r,
@@ -505,9 +394,6 @@ mod tests {
                 every.len(),
                 "every eligible hexagon must be a window"
             );
-            // fill *and* opacity: a lone fill-opacity="0.38" also matches a star,
-            // and with every cell a window there are now enough stars to hit that
-            // value by chance.
             let tris = [&PAL.a, &PAL.b]
                 .iter()
                 .filter_map(|col| svg.find(&format!("fill=\"{col}\" fill-opacity=\"{FILL_O}\"")))
@@ -530,9 +416,6 @@ mod tests {
                 "closeopen windows must not raise the whole lattice to the window border opacity"
             );
 
-            // Every window carries its own blind's timing, so it hides exactly
-            // while covered. Desync here shows up as a starfield popping in over
-            // a shut blind.
             let wins = styles(&svg, "win");
             let blinds = styles(&svg, "blind");
             assert!(
@@ -546,10 +429,6 @@ mod tests {
         }
     }
 
-    /// Every hexagon is EITHER a holder (one of its edges is a triangle's base)
-    /// OR an intersector (a triangle's tip pokes into it), never both, and no
-    /// triangle sits inside the icon zone. This is what keeps triangles few,
-    /// non-overlapping and out from behind the glyph.
     #[test]
     fn roles_are_exclusive_and_the_centre_is_clear() {
         for (w, h) in [(1920u32, 1080u32), (1080, 1920)] {

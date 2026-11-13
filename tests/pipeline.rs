@@ -1,6 +1,3 @@
-//! `render_to_string` is the CLI's own pipeline with the sink removed. If these
-//! ever diverge, a rule added to `validate()` reaches one caller and not the
-//! other -- the failure this extraction exists to prevent.
 use bgsvg::{Error, load, render_to_string};
 
 #[test]
@@ -15,7 +12,6 @@ fn render_to_string_is_the_pipeline_the_cli_runs() {
 
 #[test]
 fn render_to_string_validates_before_it_renders() {
-    // the one rule parameters.proto cannot state
     let e = render_to_string(
         r#"{"background":{"motion":"CLOSEOPEN","image":"NONE"}}"#,
         640,
@@ -24,7 +20,6 @@ fn render_to_string_validates_before_it_renders() {
     .expect_err("CLOSEOPEN with NONE has nothing to reveal");
     assert!(matches!(e, Error::Invalid(_)), "got {e:?}");
 
-    // a typo'd key is the schema's rejection, not validate()'s
     assert!(matches!(
         render_to_string(r#"{"backgrond":{}}"#, 640, 360).unwrap_err(),
         Error::Schema(_)
@@ -40,8 +35,6 @@ fn load_returns_the_message_too_so_the_cli_can_pick_a_sink() {
 
 #[test]
 fn render_to_string_rejects_a_zero_dimension_before_it_can_overflow() {
-    // a zero row height would otherwise reach Lattice::new and overflow its
-    // row count -- every caller, including bgsvg-wasm, funnels through here
     assert!(matches!(
         render_to_string("{}", 0, 360).unwrap_err(),
         Error::Invalid(_)

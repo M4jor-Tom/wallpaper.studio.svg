@@ -1,36 +1,4 @@
 //! Golden corpus: every schema-valid config, kept beside the SVG it renders.
-//!
-//! ```text
-//! tests/golden/<sha512 of the SVG>/<sha512 of the JSON>_parameters.json
-//!                                 /<sha512 of the SVG>_background.svg
-//! ```
-//!
-//! One rule covers both files: each is named by the sha512 of its own bytes,
-//! exactly as written. So `sha512sum` reproduces every name in the corpus, and
-//! the SVG additionally reproduces the directory holding it -- nothing has to
-//! trust this program to check its own work:
-//!
-//! ```sh
-//! sha512sum tests/golden/<D>/*                             # -> <F>, <D>
-//! nix run .#bgsvg -- tests/golden/<D>/<F>_parameters.json
-//! sha512sum out/trihex-*.svg                               # -> D
-//! ```
-//!
-//! The other suites assert the invariants a render must satisfy; this asserts
-//! the render did not change at all, and parses each one as XML on the way
-//! past. Keeping the SVG rather than only its hash is what lets a failure say
-//! *what* moved instead of just *that* something did.
-//!
-//! ```sh
-//! cargo test --workspace                                       # includes this
-//! cargo test --test golden -- --ignored regenerate_the_corpus  # after an intended change
-//! ```
-//!
-//! It renders in-process through `render_to_string` rather than spawning the
-//! binary: `tests/pipeline.rs` pins that function to exactly what the CLI
-//! writes, and a test target is rebuilt with the code it tests -- a harness
-//! that shells out to `target/release/bgsvg` can report success against a
-//! binary from an hour ago, which is what the Python one did.
 use bgsvg::params::{parse_res, valid_configs};
 use bgsvg::render_to_string;
 use sha2::{Digest, Sha512};
@@ -41,12 +9,8 @@ const ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden");
 const JSON_SUFFIX: &str = "_parameters.json";
 const SVG_SUFFIX: &str = "_background.svg";
 
-/// What the corpus should hold, keyed by the JSON's hash: `{JSON bytes, SVG bytes}`.
 type Corpus = BTreeMap<String, (Vec<u8>, Vec<u8>)>;
 
-/// What it does hold: the same, plus the directory each pair was found in. The
-/// SVG is `None` when the directory did not hold exactly one, which `scan` has
-/// already reported -- the comparison below then has nothing to compare against.
 type Found = BTreeMap<String, (String, Vec<u8>, Option<Vec<u8>>)>;
 
 fn sha(blob: &[u8]) -> String {
@@ -56,14 +20,10 @@ fn sha(blob: &[u8]) -> String {
         .collect()
 }
 
-/// A config as you would read it -- short enough that every problem below names
-/// the config itself instead of the hash it happens to live under.
 fn text(blob: &[u8]) -> String {
     String::from_utf8_lossy(blob).trim().to_string()
 }
 
-/// The file names in a directory, unsorted. Both levels of the corpus want the
-/// same thing -- names as `String`, sorted, so the report reads the same way twice.
 fn names_in(dir: std::fs::ReadDir) -> Vec<String> {
     dir.map(|e| {
         e.expect("a readable entry")
@@ -74,27 +34,15 @@ fn names_in(dir: std::fs::ReadDir) -> Vec<String> {
     .collect()
 }
 
-/// `{JSON hash: (JSON bytes, SVG bytes)}` -- the corpus as it should exist.
-///
-/// The enumeration lives in `params::valid_configs`, which `tests/configs.rs`
-/// also reads, so that a new enum value grows this corpus and the cargo tests
-/// together -- describing the axes twice is how one surface silently stops
-/// covering them.
 fn corpus() -> Corpus {
-    // The goldens carry no `output` key, so they inherit whatever the CLI's
-    // default sink picks. Restating "1920x1080" here would be a second copy of
-    // a constant that already has one home.
     let (w, h) = parse_res("").expect("the empty resolution is the 1080p default");
     let configs = valid_configs(0);
     let mut out = Corpus::new();
     for cfg in &configs {
         let line = serde_json::to_string(cfg).expect("a config must serialise");
         let svg = render_to_string(&line, w, h).unwrap_or_else(|e| panic!("{line}: {e}"));
-        // well-formed, not merely unchanged
         roxmltree::Document::parse(&svg).unwrap_or_else(|e| panic!("{line}: {e}"));
-        // what lands on disk: exactly what `bgsvg --configs` prints, plus the
-        // trailing newline that keeps it a POSIX text file. The name hashes
-        // these bytes and not some other rendering of them.
+        // on disk: exactly what `bgsvg --configs` prints plus a newline; the name hashes these bytes
         let json = format!("{line}\n").into_bytes();
         out.insert(sha(&json), (json, svg.into_bytes()));
     }
@@ -106,8 +54,6 @@ fn corpus() -> Corpus {
     out
 }
 
-/// Where two SVGs first part company. A line diff says nothing here -- the whole
-/// document is one line -- so point at the byte and quote around it.
 fn first_diff(old: &[u8], new: &[u8]) -> String {
     let i = old
         .iter()
@@ -124,9 +70,6 @@ fn first_diff(old: &[u8], new: &[u8]) -> String {
     )
 }
 
-/// Read the corpus off disk. Enforces the shape here so the comparison below
-/// only has to care about content: one directory per render, holding one config
-/// and the one SVG it renders, every file named by its own hash.
 fn scan() -> (Found, Vec<String>) {
     let (mut found, mut bad) = (Found::new(), Vec::new());
     let Ok(dir) = std::fs::read_dir(ROOT) else {
@@ -152,8 +95,6 @@ fn scan() -> (Found, Vec<String>) {
         let mut blobs = BTreeMap::new();
         for n in &names {
             let p = d.join(n);
-            // one guard for both ways of not being a golden: a subdirectory, or
-            // a file whose name carries neither suffix
             let stem = p
                 .is_file()
                 .then(|| {
@@ -213,14 +154,10 @@ fn scan() -> (Found, Vec<String>) {
     (found, bad)
 }
 
-/// Every way the corpus on disk and the corpus this build renders can disagree,
-/// in config order. Empty means unchanged.
 fn verify() -> Vec<String> {
     let want = corpus();
     let (found, mut bad) = scan();
 
-    // Both loops walk in config order rather than hash order, so the report
-    // reads like the sweep that produced it instead of like a directory listing.
     let mut wanted: Vec<_> = want.iter().collect();
     wanted.sort_by(|a, b| (a.1).0.cmp(&(b.1).0));
     let mut stored_configs: Vec<_> = found.iter().collect();
@@ -255,8 +192,6 @@ fn verify() -> Vec<String> {
     bad
 }
 
-/// One report, formatted the way the Python harness printed it, because a
-/// hundred-character assert line about a one-line document is unreadable.
 fn report(bad: &[String]) -> String {
     format!(
         "golden: {} problem(s)\n  {}\n\nif the picture was meant to change:\n  \
@@ -266,13 +201,7 @@ fn report(bad: &[String]) -> String {
     )
 }
 
-/// Verify and regenerate must never interleave. They are separated by `#[ignore]`
-/// in normal use, but `cargo test -- --include-ignored` would run them
-/// concurrently and one would delete the corpus the other is reading.
-///
-/// Poisoning is ignored on purpose: the guarded data is `()`, and the verify
-/// test asserts while holding this, so a real golden failure poisons it every
-/// time. Unwrapping would turn the next regeneration into a lock error.
+/// Verify and regenerate must not interleave (`--include-ignored` runs both). Poison is ignored: a failing verify poisons it.
 static CORPUS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[test]
@@ -282,13 +211,7 @@ fn the_corpus_is_unchanged() {
     assert!(bad.is_empty(), "{}", report(&bad));
 }
 
-/// Rewrites all 42 goldens from this build. `#[ignore]` because [[0009]] is a
-/// standing rule -- a moved golden is a regression until proven otherwise, so
-/// this must be typed on purpose and never ride along with `cargo test`:
-///
-/// ```sh
-/// cargo test --test golden -- --ignored regenerate_the_corpus
-/// ```
+/// Rewrites all 42 goldens. `#[ignore]`d: a moved golden is a regression until proven otherwise (ADR 0009).
 #[test]
 #[ignore = "rewrites the corpus; run it only after an intended visual change"]
 fn regenerate_the_corpus() {
@@ -306,7 +229,6 @@ fn regenerate_the_corpus() {
             std::fs::write(d.join(&name), blob).unwrap_or_else(|e| panic!("{name}: {e}"));
         }
     }
-    // a fresh corpus still has to pass every check
     let bad = verify();
     assert!(bad.is_empty(), "{}", report(&bad));
 }

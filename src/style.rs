@@ -1,4 +1,3 @@
-//! The light-theme palette, the tuning constants, and the stylesheet.
 use std::fmt::Write as _;
 use std::sync::LazyLock;
 
@@ -22,30 +21,19 @@ pub const STROKE_O: f64 = 0.27;
 /// triangle fill baseline opacity
 pub const FILL_O: f64 = 0.38;
 
-// background.image STARFIELD. VOID stays in the blue-slate family rather than going black:
-// a true #000 reads as a hole punched in from a different design.
+// STARFIELD. VOID stays blue-slate: true black reads as a hole from another design.
 pub static VOID: LazyLock<String> = LazyLock::new(|| darken("#6fb7d1", 0.90));
 /// share of eligible hexagons that become windows
 pub const SPACE_FRAC: f64 = 0.08;
 /// scattered per cell bbox; ~75% survive the hexagon clip
 pub const SPACE_STARS: u32 = 24;
-/// a space cell's border sits a touch brighter than the field
 pub const SPACE_STROKE_O: f64 = 0.34;
-// background.motion CLOSEOPEN. Every eligible hexagon is a window, so the *duty cycle* is what
-// keeps the field sparse: a cell shows something for ~14% of its period and is
-// fully open for ~4%, which leaves a handful open at a time out of ~77. The period
-// is long because lowering the ratio alone would turn each opening into a blink.
+// CLOSEOPEN: sparseness comes from the duty cycle (~14% showing, ~4% open), hence the long period.
 /// per-cell shutter period, so cells never sync
 pub const BLIND_S: (f64, f64) = (60.0, 90.0);
-// Shutter keyframes as percentages of one cycle: the blind leaves scale(1) at [0],
-// is fully open over [1]..[2], and is shut again from [3]. The window behind it
-// derives its own on/off keyframes from these, so the two cannot drift apart.
+// Blind keyframes, % of cycle: leaves scale(1), open, still open, shut. The window derives its own from these.
 pub const BLIND_KF: (i32, i32, i32, i32) = (44, 49, 53, 58);
-// overlay.matrix. Rule 5 still applies, so a head takes 18-34 s to walk a
-// column rather than the second or two the film uses, and only a third of the
-// column slots carry one. ASCII only: no font can be embedded without breaking
-// the self-contained rule, so a katakana set would be tofu wherever no CJK font
-// is installed. The set also excludes < > & " ' so glyphs never need escaping.
+// ASCII only (no font can be embedded), and no < > & " ' so glyphs never need escaping.
 pub const MATRIX_GLYPHS: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ*+-=/\\|:;.#$%@?!";
 /// PAL['b'] at 0.70: the default stays in-palette
 pub const MATRIX_COLOR: &str = "#395e53b3";
@@ -53,19 +41,12 @@ pub const MATRIX_COLOR: &str = "#395e53b3";
 pub const MATRIX_FRAC: f64 = 0.34;
 /// seconds for a head to walk one column
 pub const MATRIX_S: (f64, f64) = (18.0, 34.0);
-// One glyph's life, as percentages of that walk: it flares at 0, is down to trail
-// level by [0], and is out by [1]. The trail is therefore 26% of a column -- ~7
-// lit glyphs behind the head -- and [0] is about one cell-time, so the head holds
-// its own value for exactly its own turn.
+// One glyph's life, % of the walk: flare at 0, trail level by [0], out by [1].
 pub const MATRIX_KF: (f64, f64) = (3.0, 29.0);
-// On a high-key canvas "brighter" means *more opaque*: the head is the darkest
-// glyph and the trail dissolves into the page. Without the step the head reads
-// as just another trail glyph, since the falloff alone is ~4% over one cell.
 /// the drop from head to the glyph just behind it
 pub const MATRIX_HEAD_STEP: f64 = 0.62;
 
-/// Mix two `#rrggbb` colours. Python's `round` is half-to-even, so this is
-/// `round_ties_even` -- `f64::round` would tint every colour in the file.
+/// Mix two `#rrggbb` colours. `round_ties_even`: Python's `round` is half-to-even.
 fn mix(h1: &str, h2: &str, t: f64) -> String {
     let channel = |h: &str, i: usize| {
         u8::from_str_radix(&h[i..i + 2], 16).expect("palette literals are valid hex") as f64
@@ -83,8 +64,6 @@ pub fn darken(h: &str, t: f64) -> String {
     mix(h, "#0c1017", t)
 }
 
-/// `'#rrggbb'` or `'#rrggbbaa'` -> (`'#rrggbb'`, alpha). Split rather than
-/// passed through as an 8-digit hex so the trail can scale the alpha per glyph.
 pub fn hex_rgba(s: &str) -> Result<(String, f64), String> {
     let t = s.trim();
     let bad = || format!("bad colour '{s}': use #rrggbb or #rrggbbaa");
@@ -102,12 +81,6 @@ pub fn hex_rgba(s: &str) -> Result<(String, f64), String> {
     Ok((format!("#{}", rgb.to_lowercase()), alpha as f64 / 255.0))
 }
 
-/// The stylesheet rules emitted verbatim into every render: `@keyframes` and
-/// their resting classes, all animation and no SMIL/JS, with a
-/// `prefers-reduced-motion` override at the end so every animated element has
-/// a static fallback. Returns the rules alone, with no `<style>` wrapper --
-/// angle brackets don't belong in `src/`, so `root.svg` writes
-/// `<style>{{ css }}</style>` around whatever this returns.
 pub fn css() -> String {
     let (k0, k1, k2, k3) = BLIND_KF;
     let (f0, f1) = MATRIX_KF;
@@ -127,16 +100,13 @@ pub fn css() -> String {
          24%{stroke-opacity:.34}100%{stroke-opacity:.34}}",
     );
     // closing is opening played backwards, so one symmetric cycle covers both.
-    // Mostly shut: 86% closed, ~5% shrinking, 4% open, ~5% growing back.
     write!(
         out,
         "@keyframes blind{{0%,{k0}%{{transform:scale(1)}}\
          {k1}%,{k2}%{{transform:scale(0)}}{k3}%,100%{{transform:scale(1)}}}}"
     )
     .expect("writing to a String");
-    // ...and the window switches off whenever its blind covers it, with a
-    // 1% margin either side so the stars are already there before the blind
-    // starts to move. Both spans come from BLIND_KF: they cannot drift.
+    // ...and the window is off while its blind covers it (1% margin). Both spans come from BLIND_KF.
     write!(
         out,
         "@keyframes winvis{{0%,{k0m2}%{{display:none}}\
@@ -157,18 +127,12 @@ pub fn css() -> String {
     out.push_str(".wavef{animation:wavef 5s ease-in-out infinite}");
     out.push_str(".light{animation:light 9s ease-in-out infinite}");
     out.push_str(".lightb{animation:lightb 9s ease-in-out infinite}");
-    // both rest in the *open* state: prefers-reduced-motion kills the
-    // animations below, and a blind stuck shut (or a window stuck off)
-    // would hide the starfield entirely
+    // both rest *open*: under reduced motion a shut blind would hide the starfield
     out.push_str(
         ".blind{animation:blind 75s ease-in-out infinite;transform-box:fill-box;\
          transform-origin:center;transform:scale(0)}",
     );
     out.push_str(".win{animation:winvis 75s ease-in-out infinite;display:inline}");
-    // One glyph's life, and the only thing overlay.matrix animates: the
-    // characters never move, the lighting does. --o/--t (the colour's alpha
-    // and its trail step) and --d (the column's speed) are all inherited
-    // from ancestors, so a glyph itself only has to carry its delay.
     write!(
         out,
         "@keyframes rain{{0%{{fill-opacity:var(--o)}}{f0}%{{fill-opacity:var(--t)}}\
@@ -184,8 +148,6 @@ pub fn css() -> String {
 mod tests {
     use super::*;
 
-    /// The exact strings the corpus contains. A palette that recomputes to
-    /// something else changes every byte of every render.
     #[test]
     fn palette_matches_the_corpus() {
         assert_eq!(PAL.a, "#365665");
@@ -194,8 +156,7 @@ mod tests {
         assert_eq!(*VOID, "#16212a");
     }
 
-    // half-to-even, not half-away-from-zero: 2.5 -> 2. No palette colour lands on a
-    // tie, so neither the goldens nor PAL can detect a regression to f64::round.
+    // half-to-even: no palette colour lands on a tie, so only this test catches f64::round.
     #[test]
     fn mix_rounds_ties_to_even() {
         assert_eq!(mix("#000000", "#050505", 0.5), "#020202");
@@ -210,11 +171,6 @@ mod tests {
         assert!(hex_rgba("#395e53ccc").is_err());
     }
 
-    /// The stylesheet rules are emitted verbatim into every render; the
-    /// corpus holds the only copy that matters. The fixture still carries the
-    /// `<style>` wrapper (it was captured from the whole document), so this
-    /// strips exactly that -- the wrapper itself moved to `root.svg`, not the
-    /// rules `css()` returns.
     #[test]
     fn css_matches_the_corpus() {
         let want = include_str!("../tests/data/style.txt");

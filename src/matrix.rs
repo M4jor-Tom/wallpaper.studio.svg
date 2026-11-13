@@ -1,19 +1,10 @@
-//! `overlay.matrix`: the character rain.
 use askama::Template;
 
 use crate::geom::{Lattice, fmt};
 use crate::rng::cell_rng;
 use crate::style::{MATRIX_FRAC, MATRIX_GLYPHS, MATRIX_HEAD_STEP, MATRIX_KF, MATRIX_S, hex_rgba};
 
-/// One character cell, already reduced to what `matrix.svg` substitutes
-/// verbatim. `style` is the whole `animation-delay:-{s}s` value rather than
-/// the bare seconds -- a template may only substitute, so the sign and unit
-/// are assembled here, not stitched on around an interpolation. `o` is the
-/// fill-opacity this glyph holds at t=0 (`pat_matrix`'s keyframe arithmetic,
-/// pre-rounded): the resting frame `prefers-reduced-motion` falls back to.
-/// `ch` is interpolated unescaped -- safe only because `MATRIX_GLYPHS`
-/// (`style.rs:48`) excludes `< > & " '` by construction, which is also why
-/// `.svg` templates register the no-op `Text` escaper instead of an HTML one.
+/// `ch` is emitted unescaped: safe only because `MATRIX_GLYPHS` excludes `< > & " '`.
 struct RainCell {
     x: String,
     y: String,
@@ -22,21 +13,11 @@ struct RainCell {
     ch: char,
 }
 
-/// One rain column: its whole `--d:{s}s` style value, inherited by every cell
-/// below so a column sets its speed once instead of repeating
-/// `animation-duration` on each of them, plus its cells, head to tail.
 struct RainColumn {
     style: String,
     cells: Vec<RainCell>,
 }
 
-/// The template context for `matrix.svg`. `style` is the layer's whole
-/// `--o:{alpha};--t:{trail}` value: both custom properties are inherited by
-/// every glyph in every column, so they are set once here rather than
-/// repeated per cell. A column that failed the `MATRIX_FRAC` draw never
-/// reaches `columns` at all -- `pat_matrix` only pushes a `RainColumn` for a
-/// slot that passed, so the template has no slot-skipping conditional to get
-/// wrong.
 #[derive(askama::Template)]
 #[template(path = "matrix.svg")]
 struct Matrix {
@@ -46,38 +27,9 @@ struct Matrix {
     columns: Vec<RainColumn>,
 }
 
-/// overlay.matrix: columns of characters that stay put while a lit head walks
-/// down them at `angle` degrees (0 = downward, increasing clockwise).
-///
-/// NOTHING MOVES. Every cell of a column holds one character, chosen once and
-/// fixed for good; what travels is the lighting. Each glyph runs the same
-/// keyframes -- flare to --o as the head arrives, step down to --t, fade out
-/// over the trail -- offset by one cell-time per cell, so the head keeps
-/// advancing into a fresh character while the ones behind it dim in place.
-/// Translating the glyphs instead would slide the characters across the canvas,
-/// which is the one thing this effect must not do.
-///
-/// The band is the canvas seen from the travel direction -- P across, T along --
-/// so no cell is ever placed somewhere the canvas cannot reach. Cells are placed
-/// by rotating their band coordinates here rather than by wrapping them in a
-/// rotated group: glyphs have to stay upright at every angle, so a rotated group
-/// would need a counter-rotation on every single one of them. Rotating in Rust
-/// leaves the output with no transform at all (~45 bytes a glyph, and at a steep
-/// angle there are ~500 of them).
-///
-/// Each glyph's fill-opacity attribute holds the value its keyframes give it at
-/// t=0, so prefers-reduced-motion freezes the true opening frame rather than
-/// some other state: a still field of columns, each lit for the length of its
-/// trail. The attribute loses to the animation while one is running.
-///
-/// Drawn under the halo, so the halo subtracts the rain around the icon the way
-/// it subtracts the lattice -- the focal point stays uncontested for free.
-///
-/// Columns draw from cell_rng, off the global stream the lattice uses, so
-/// switching the overlay on cannot move a hexagon. Keyed by slot rather than
-/// draw order for the reason cell_rng exists: the slot count follows the angle,
-/// so a shared stream would reshuffle every glyph when the rain is merely
-/// re-aimed.
+/// Character rain at `angle` degrees (0 = down, clockwise). NOTHING MOVES: glyphs are fixed, the lighting travels.
+/// Cells are rotated in Rust, so glyphs stay upright with no transform. Each glyph's fill-opacity is its t=0
+/// value, the frame reduced motion freezes. Columns use `cell_rng` keyed by slot, so the overlay never moves a hexagon.
 pub fn pat_matrix(w: u32, h: u32, lat: &Lattice, seed: u32, angle: f64, color: &str) -> String {
     let (rgb, alpha) = hex_rgba(color).expect("validate() already accepted the colour");
     let (hold, out_at) = MATRIX_KF;
@@ -105,11 +57,8 @@ pub fn pat_matrix(w: u32, h: u32, lat: &Lattice, seed: u32, angle: f64, color: &
         let cells = (0..n)
             .map(|j| {
                 let dy = j as f64 * step - band_t / 2.0;
-                // how far into its cycle this cell is -- `head - j` is
-                // negative for most cells, and Python's `%` is never
-                // negative, so rem_euclid
+                // rem_euclid: `head - j` is mostly negative, Python's `%` never is
                 let pct = 100.0 * (head - j).rem_euclid(n) as f64 / n as f64;
-                // ...evaluated against the keyframes,
                 let o = if pct <= hold {
                     alpha * (1.0 - (1.0 - MATRIX_HEAD_STEP) * pct / hold)
                 } else if pct <= out_at {
@@ -152,8 +101,6 @@ mod tests {
     use crate::style::{MATRIX_COLOR, MATRIX_GLYPHS};
     use crate::svg::build_svg;
 
-    /// `background.py`'s `build_svg(w, h, bg="lights", bg_image="space",
-    /// seed=3, ...)`, with the overlay switched on or off.
     fn scene(overlay: Option<Rain>) -> Scene {
         Scene {
             seed: 3,
@@ -164,16 +111,12 @@ mod tests {
         }
     }
 
-    /// Every `<polygon ...>` tag, as its raw slice: the lattice and its
-    /// triangles, verbatim.
     fn polys(s: &str) -> Vec<&str> {
         s.match_indices("<polygon")
             .map(|(i, _)| &s[i..=i + s[i..].find('>').expect("a closing bracket")])
             .collect()
     }
 
-    /// The inner source of every rain column -- the Rust of
-    /// `re.findall(r'<g style="--d:[^"]*">(.*?)</g>', s)`.
     fn columns(s: &str) -> Vec<&str> {
         s.match_indices("<g style=\"--d:")
             .map(|(i, _)| {
@@ -185,15 +128,12 @@ mod tests {
             .collect()
     }
 
-    /// The single character each `<text>` carries.
     fn glyphs(s: &str) -> Vec<u8> {
         s.match_indices("</text>")
             .map(|(i, _)| s.as_bytes()[i - 1])
             .collect()
     }
 
-    /// Every number introduced by `key` and terminated by `end`, in document
-    /// order.
     fn nums(s: &str, key: &str, end: char) -> Vec<f64> {
         s.match_indices(key)
             .map(|(i, _)| {
@@ -205,9 +145,6 @@ mod tests {
             .collect()
     }
 
-    /// The characters must stay put while the lighting walks the column, stay
-    /// upright at any angle, and leave the lattice byte-identical: the overlay
-    /// is a layer, never a layout input.
     #[test]
     fn the_rain_lights_a_column_without_moving_anything() {
         for (w, h) in [(1920u32, 1080u32), (1080, 1920)] {
@@ -228,14 +165,7 @@ mod tests {
                     fmt(angle)
                 );
 
-                // Cells are rotated into place in Rust, so glyphs are upright
-                // at every angle for free. A transform creeping back in means
-                // either tilted characters or ~45 wasted bytes on each of ~500
-                // of them.
-                // ...up to the halo circle, which is the first `<circle` AFTER
-                // the layer: a starfield's stars are circles too, and Python's
-                // `svg.index("<circle")` finds one of those and slices
-                // backwards to an empty -- so vacuously clean -- string.
+                // the halo is the first `<circle` AFTER the layer: stars are circles too
                 let start = svg.find("class=\"matrix\"").expect("the rain layer");
                 let rest = &svg[start..];
                 let layer = &rest[..rest.find("<circle").expect("the halo")];
@@ -270,9 +200,6 @@ mod tests {
                         1,
                         "a column must have exactly one head"
                     );
-                    // Walking back from the head must give one contiguous run
-                    // that only ever dims. Anything else means the stagger is
-                    // not advancing the lighting a single cell at a time.
                     let head = o.iter().position(|v| *v == top).expect("the head");
                     let n = o.len() as i64;
                     let run: Vec<f64> = (0..lit as i64)
@@ -284,10 +211,6 @@ mod tests {
                     );
                 }
 
-                // The stagger IS the travel: consecutive cells are one
-                // cell-time apart, so the lighting advances by exactly one
-                // character per step. Collapse these to a single delay and the
-                // whole column flashes at once instead.
                 let d = nums(cols[0], "animation-delay:-", 's');
                 let gaps: Vec<f64> = d.windows(2).map(|w| w[0] - w[1]).collect();
                 let lo = gaps.iter().copied().fold(f64::MAX, f64::min);
@@ -297,9 +220,6 @@ mod tests {
                     "glyph delays must step by one constant cell-time down the column"
                 );
 
-                // The characters are anchored by x/y and only their opacity is
-                // animated. An animated transform here would slide them across
-                // the canvas, which is the one thing this effect must not do.
                 let kf = &svg[svg.find("@keyframes rain{").expect("the rain keyframes")..];
                 assert!(
                     !kf[..kf.find("}}").expect("the end of the rule")].contains("translate"),
@@ -311,9 +231,6 @@ mod tests {
                 );
             }
 
-            // The colour is split into fill + alpha (the trail scales it)
-            // rather than passed through as an 8-digit hex, and the alpha
-            // reaches the glyphs as --o.
             let svg = build_svg(
                 w,
                 h,

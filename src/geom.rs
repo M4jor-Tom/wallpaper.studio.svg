@@ -1,8 +1,6 @@
-//! Number formatting and the shared hexagon grid.
 use std::f64::consts::PI;
 
-/// `math.sqrt(3)`, as a literal because `f64::sqrt` is not const. Pinned by a
-/// test against `3f64.sqrt()`.
+/// A literal because `f64::sqrt` is not const; pinned by a test.
 pub const SQRT3: f64 = 1.732_050_807_568_877_2;
 
 /// Neighbour (dr, dc) per edge k (edge normal at 60*k deg), by row parity.
@@ -11,10 +9,7 @@ pub const NB: [[(i32, i32); 6]; 2] = [
     [(0, 1), (1, 1), (1, 0), (0, -1), (-1, 0), (-1, 1)],
 ];
 
-/// Two decimals, trailing zeros stripped, and never a negative zero: Python
-/// reaches the integer branch through `int(round(x, 2))`, which turns `-0.0`
-/// into `0`. Formatting once and trimming gives the same answer as Python's
-/// round-then-format without a second rounding step to get wrong.
+/// Two decimals, trailing zeros stripped, never "-0" -- Python's `int(round(x, 2))`.
 pub fn fmt(x: f64) -> String {
     let s = format!("{x:.2}");
     let t = s.trim_end_matches('0').trim_end_matches('.');
@@ -25,7 +20,6 @@ pub fn fmt(x: f64) -> String {
     }
 }
 
-/// A point list as an SVG `points` attribute.
 pub fn pts(points: &[(f64, f64)]) -> String {
     points
         .iter()
@@ -34,7 +28,6 @@ pub fn pts(points: &[(f64, f64)]) -> String {
         .join(" ")
 }
 
-/// The `n` vertices of a regular polygon, starting at `rot`.
 pub fn regular_poly(cx: f64, cy: f64, r: f64, n: usize, rot: f64) -> Vec<(f64, f64)> {
     (0..n)
         .map(|i| {
@@ -44,9 +37,6 @@ pub fn regular_poly(cx: f64, cy: f64, r: f64, n: usize, rot: f64) -> Vec<(f64, f
         .collect()
 }
 
-/// The hexagon grid every stage works from -- renderer and asserts alike, so
-/// they cannot drift apart. Density is constant across resolutions because the
-/// cell size is tied to min(w, h).
 pub struct Lattice {
     pub u: f64,
     pub s: f64,
@@ -82,8 +72,7 @@ impl Lattice {
         }
     }
 
-    /// Odd rows are offset by half a cell. `r` starts at -1, so the parity has
-    /// to be `rem_euclid`: Rust's `%` would offset row -1 the wrong way.
+    /// `rem_euclid`, not `%`: rows start at -1.
     pub fn center(&self, r: i32, c: i32) -> (f64, f64) {
         (
             c as f64 * self.d + r.rem_euclid(2) as f64 * self.d / 2.0,
@@ -96,9 +85,6 @@ impl Lattice {
 mod tests {
     use super::*;
 
-    /// Python's `fmt`: round to two decimals, then drop a trailing ".0" and any
-    /// trailing zeros. Rendering `-0.00` or `-0` would put a byte in the file
-    /// that the Python never wrote -- `int(-0.0)` is `0`.
     #[test]
     fn fmt_matches_python() {
         for (x, want) in [
@@ -123,8 +109,6 @@ mod tests {
         assert_eq!(SQRT3, 3f64.sqrt());
     }
 
-    /// `r % 2` in `center` runs with r = -1, where Python returns 1 and Rust's
-    /// `%` returns -1. Row -1 must be offset like every other odd row.
     #[test]
     fn odd_row_offset_survives_negative_rows() {
         let lat = Lattice::new(1920, 1080);

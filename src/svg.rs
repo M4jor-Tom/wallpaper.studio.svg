@@ -1,5 +1,3 @@
-//! Document assembly: the `<svg>` header, `<defs>`, the stylesheet, and the
-//! three content slots (background pattern, rain overlay, centre glyph).
 use askama::Template;
 
 use crate::geom::{Lattice, fmt};
@@ -10,16 +8,8 @@ use crate::rng::PyRandom;
 use crate::style::{PAL, css};
 use crate::trihex::pat_trihex;
 
-/// The template context for `defs.svg`: the gradients and filter every render
-/// needs, plus the starfield nebula pair. `w04`/`h`/`bg0`/`bg1` feed the `bg`
-/// gradient, which is `userSpaceOnUse` so any shape can paint canvas -- the
-/// default `objectBoundingBox` would squeeze the whole ramp into a single
-/// hexagon, and a closed blind (`background.motion` CLOSEOPEN) would read as
-/// a patch instead of vanishing into the page. `nebulae` is empty unless
-/// `scene.image` is `Starfield`, and that alone decides whether the template
-/// emits them -- there is no separate `starfield: bool` next to it, because a
-/// bool that must agree with the vec's length is a second way to say the same
-/// thing, and the two could drift out of sync.
+/// `bg` is `userSpaceOnUse` so any shape can paint canvas: `objectBoundingBox` would squeeze the ramp
+/// into one hexagon, and a shut CLOSEOPEN blind would show as a patch.
 #[derive(askama::Template)]
 #[template(path = "defs.svg")]
 struct Defs {
@@ -30,28 +20,7 @@ struct Defs {
     nebulae: Vec<(&'static str, &'static str)>,
 }
 
-/// The template context for `root.svg`: the document shell wrapped around the
-/// three content slots (`bg`, `rain`, `glyph`) that the pattern, overlay and
-/// icon builders already reduced to complete markup. Every field is a
-/// `String` (or `&'static str`) Rust finished assembling before the struct
-/// existed -- the template only places them, it never formats a number,
-/// derives a unit or picks a sign.
-///
-/// `templates/root.svg` ends in two newlines, not one: askama always trims
-/// exactly one trailing newline off a rendered template, so a file ending in
-/// a single `\n` would render with none. The original `format!` ended its
-/// output in `</svg>\n`, and the golden corpus is byte-exact against that, so
-/// the second newline is load-bearing -- collapsing it back to one silently
-/// drops the render's last byte.
-///
-/// `view_box` and `icon_transform` are whole attribute values, not the
-/// numbers inside them, for the same reason `trihex.rs`'s `VoidCell::rot` is:
-/// the template must not be the thing that puts the "0 0" origin in front of
-/// a size, the space between a width and a height, the comma between two
-/// coordinates or the space before `scale(`. `ws`/`hs` and `cx`/`cy` stay
-/// beside them because three elements -- the root `<svg>`'s own width/height
-/// and the two `<rect>`s -- still take a size one attribute at a time, and
-/// the halo circle takes the centre the same way.
+/// `root.svg` ends in TWO newlines: askama trims one, and the corpus expects a trailing `\n`.
 #[derive(askama::Template)]
 #[template(path = "root.svg")]
 struct Root {
@@ -70,9 +39,6 @@ struct Root {
     glyph: String,
 }
 
-/// Port of `background.py:548-594`. Layout depends only on `scene.seed`, never
-/// on motion/image/glyph/overlay -- the RNG is seeded first for exactly that
-/// reason.
 pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     let mut rng = PyRandom::new(&format!("trihex:{}", scene.seed));
     let lat = Lattice::new(w, h);
@@ -94,8 +60,7 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     .expect("writing to a String");
 
     let bg_svg = pat_trihex(w, h, &lat, scene, &mut rng);
-    // between the pattern and the halo, so the halo subtracts the rain around
-    // the icon exactly as it subtracts the lattice
+    // between the pattern and the halo, so the halo masks the rain around the icon
     let rain_svg = scene.overlay.as_ref().map_or(String::new(), |rain| {
         pat_matrix(w, h, &lat, scene.seed, rain.angle, &rain.color)
     });
@@ -149,9 +114,6 @@ mod tests {
     use super::*;
     use crate::params::{parse, resolve};
 
-    /// Everything before the first <rect> is the document shell: viewBox,
-    /// label, defs and stylesheet. It is identical in every render of the same
-    /// size, so a golden's prefix is the oracle for it.
     #[test]
     fn the_document_shell_matches_the_corpus() {
         let want = include_str!("../tests/data/shell.txt");

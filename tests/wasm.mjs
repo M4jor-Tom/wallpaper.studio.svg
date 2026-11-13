@@ -1,17 +1,5 @@
 #!/usr/bin/env node
-// The WASM build must render the SAME BYTES as the native one -- not merely the
-// same picture. Every render in tests/golden/ is pinned to the sha512 of its own
-// bytes, so comparing against the corpus proves both at once: the wasm build
-// matches native, and it matches what native was pinned to.
-//
-// Float formatting through geom::fmt is the plausible way two targets diverge
-// while both still look correct, which is why this exists at all.
-//
-// `tests/wasm.rs` runs this, so `cargo test --workspace` covers it; run it
-// directly when you want the sweep without the harness around it:
-//
-//   nix build .#bgsvg-wasm
-//   BGSVG_WASM=$PWD/result/nodejs nix develop -c node tests/wasm.mjs
+// The WASM build must render the SAME BYTES as native: every render is compared against tests/golden/.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
@@ -20,10 +8,10 @@ import { fileURLToPath } from "node:url";
 
 const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
 const GOLDEN = join(REPO, "tests", "golden");
-const SIZE = [1920, 1080]; // what tests/golden.rs renders at
+const SIZE = [1920, 1080];
 const JSON_SUFFIX = "_parameters.json";
 const SVG_SUFFIX = "_background.svg";
-const EXPECTED = 42; // same count tests/configs.rs asserts
+const EXPECTED = 42;
 
 const pkg = process.env.BGSVG_WASM;
 if (!pkg) {
@@ -35,8 +23,6 @@ const { render, resolve_resolution, resolutions } = await import(join(pkg, "bgsv
 
 const sha = (b) => createHash("sha512").update(b).digest("hex");
 
-// Where two documents first part company. The whole SVG is one line, so a line
-// diff says nothing -- point at the byte and quote either side of it.
 function firstDiff(want, got) {
   let i = 0;
   while (i < want.length && i < got.length && want[i] === got[i]) i++;
@@ -83,9 +69,7 @@ if (checked !== EXPECTED) {
   bad.push(`swept ${checked} configs, expected ${EXPECTED} -- the corpus and the sweep disagree`);
 }
 
-// The thrown-error shape and the two lookup exports: nothing above this line
-// exercises them, and ADR 0012 calls a change to the error shape a breaking
-// change for a consumer outside this tree.
+// The error shape is public API (ADR 0012): changing it breaks consumers.
 const errorContractChecks = [
   [
     "an unknown key throws kind=schema with a real position",

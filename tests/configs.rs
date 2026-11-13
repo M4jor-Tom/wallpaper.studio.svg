@@ -1,6 +1,3 @@
-//! Every config the schema expresses and validate() keeps, rendered small and
-//! checked for the dispatch invariants. `tests/golden.rs` covers well-formedness
-//! and byte-stability; this covers "the right code ran".
 use bgsvg::params::{Glyph, parse, resolve, valid_configs, validate};
 use bgsvg::svg::build_svg;
 
@@ -46,8 +43,6 @@ fn every_valid_config_dispatches_correctly() {
     assert_eq!(n, 42);
 }
 
-/// `{}` is a complete config, and it must render exactly what the schema's
-/// zero values describe: hexatri rotating on a plain static lattice.
 #[test]
 fn an_empty_config_renders_the_defaults() {
     let from_empty = build_svg(640, 360, &resolve(&parse("{}").unwrap()));

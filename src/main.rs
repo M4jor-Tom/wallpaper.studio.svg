@@ -1,4 +1,3 @@
-//! `bgsvg [config.json]` -- see `parameters.proto` for the config schema.
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
