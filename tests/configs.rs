@@ -90,7 +90,7 @@ fn every_valid_config_dispatches_correctly() {
         );
         n += 1;
     }
-    assert_eq!(n, 89);
+    assert_eq!(n, 96);
 }
 
 #[test]
@@ -128,16 +128,22 @@ fn an_inert_zine_block_changes_nothing() {
     assert!(n > 0, "no blueprint-only config to try");
 }
 
+fn summit_rider(rider: serde_json::Value) -> String {
+    let cfg = json!({"background": {"summit": {}}, "icon": {"punk": {"rider": rider}}});
+    render_to_string(&cfg.to_string(), 640, 360).unwrap_or_else(|e| panic!("{cfg}: {e}"))
+}
+
 #[test]
 fn counter_clockwise_without_spin_changes_nothing() {
-    let render = |rider: serde_json::Value| {
-        let cfg = json!({"background": {"summit": {}}, "icon": {"punk": {"rider": rider}}});
-        render_to_string(&cfg.to_string(), 640, 360).unwrap_or_else(|e| panic!("{cfg}: {e}"))
-    };
     assert_eq!(
-        render(json!({"spin_rpm": 0})),
-        render(json!({"spin_rpm": 0, "counter_clockwise": true}))
+        summit_rider(json!({"spin_rpm": 0})),
+        summit_rider(json!({"spin_rpm": 0, "counter_clockwise": true}))
     );
+}
+
+#[test]
+fn bpm_without_any_head_animation_changes_nothing() {
+    assert_eq!(summit_rider(json!({})), summit_rider(json!({"bpm": 150})));
 }
 
 #[test]

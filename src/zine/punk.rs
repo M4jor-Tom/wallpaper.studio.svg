@@ -4,8 +4,9 @@ use std::f64::consts::PI;
 use askama::Template;
 
 use crate::geom::{fmt, pts};
+use crate::params::PunkLook;
 use crate::zine::rider::Sticker;
-use crate::zine::style::{HEAD, RAINBOW, shade};
+use crate::zine::style::{HEAD, RAINBOW, WHITE, shade};
 
 /// The head disc, front view, in the 200-unit glyph grid.
 const R: f64 = 56.0;
@@ -14,6 +15,8 @@ const CY: f64 = 8.0;
 const PHI: f64 = 35.0 * PI / 180.0;
 /// how far each spike reaches past the scalp, forehead to nape
 const CREST: [f64; 7] = [26.0, 44.0, 54.0, 52.0, 44.0, 34.0, 24.0];
+/// how much darker a spike's nape half is than its lit half
+pub const NAPE_SHADE: f64 = 0.28;
 
 type Pt = (f64, f64);
 
@@ -125,7 +128,7 @@ fn crest() -> (Vec<Spike>, Vec<Spike>) {
                 lit: half(12.5),
                 lit_fill: RAINBOW[k],
                 shade: half(-12.5),
-                shade_fill: shade(RAINBOW[k], 0.28),
+                shade_fill: shade(RAINBOW[k], NAPE_SHADE),
             }
         })
         .collect();
@@ -133,23 +136,35 @@ fn crest() -> (Vec<Spike>, Vec<Spike>) {
     spikes.into_iter().partition(|s| s.depth < 0.0)
 }
 
-/// `paint` off is the silhouette: the same shapes, no fill, no face.
+/// `paint` off is the silhouette: the same shapes, no fill, no face. `class` names the animations
+/// that are on; their CSS drives the parts beneath (`.zwave .zsp`, `.zchat .zlo`, ...).
 #[derive(Template)]
 #[template(path = "zine/punk.svg")]
 struct Punk<'a> {
     paint: bool,
+    class: Option<String>,
     behind: &'a [Spike],
     front: &'a [Spike],
     r: String,
     cy: String,
     head: &'static str,
+    white: &'static str,
     eyes: &'a [Vec<(String, String, String, String)>],
     upper: &'a [String],
     lower: &'a [String],
 }
 
-pub fn head() -> Sticker {
+pub fn head(p: &PunkLook) -> Sticker {
     let (behind, front) = crest();
+    let on: Vec<_> = [
+        (p.crest_wave, "zwave"),
+        (p.rainbow_flow, "zflow"),
+        (p.chatter, "zchat"),
+        (p.eye_pop, "zpop"),
+    ]
+    .into_iter()
+    .filter_map(|(is, class)| is.then_some(class))
+    .collect();
     let at = |p| wrap(p).0;
     let eyes: Vec<Vec<_>> = eyes()
         .iter()
@@ -165,14 +180,16 @@ pub fn head() -> Sticker {
     let (upper, lower) = teeth();
     let teeth = |t: &[[Pt; 3]]| -> Vec<String> { t.iter().map(|t| pts(&t.map(at))).collect() };
     let (upper, lower) = (teeth(&upper), teeth(&lower));
-    let draw = |paint| {
+    let draw = |paint, class| {
         Punk {
             paint,
+            class,
             behind: &behind,
             front: &front,
             r: fmt(R),
             cy: fmt(CY),
             head: HEAD,
+            white: WHITE,
             eyes: &eyes,
             upper: &upper,
             lower: &lower,
@@ -181,14 +198,34 @@ pub fn head() -> Sticker {
         .expect("writing to a String")
     };
     Sticker {
-        silhouette: draw(false),
-        art: draw(true),
+        // the outline has the crest to wave, but no colour, teeth or eyes to animate
+        silhouette: draw(false, p.crest_wave.then(|| "zwave".to_string())),
+        art: draw(true, (!on.is_empty()).then(|| on.join(" "))),
+        beats: !on.is_empty(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::params::rider::{Gear, Motion};
+    use crate::params::{PunkLook, Rig};
+
+    fn still() -> PunkLook {
+        PunkLook {
+            rig: Rig {
+                gear: Gear::Board,
+                ccw: false,
+                rpm: 8,
+                motion: Motion::Still,
+                bpm: 96,
+            },
+            crest_wave: false,
+            rainbow_flow: false,
+            chatter: false,
+            eye_pop: false,
+        }
+    }
 
     /// The markup of spike `k`, up to the end of its group.
     fn spike(art: &str, k: usize) -> &str {
@@ -199,7 +236,7 @@ mod tests {
 
     #[test]
     fn the_crest_runs_red_at_the_forehead_to_violet_at_the_nape() {
-        let art = head().art;
+        let art = head(&still()).art;
         // lit half, then its shade (darkened 28%)
         assert!(spike(&art, 0).contains(r##"fill="#ff3b3b""##));
         assert!(spike(&art, 0).contains(r##"fill="#b82a2a""##));
@@ -212,7 +249,7 @@ mod tests {
     fn the_grin_has_six_upper_and_five_lower_teeth() {
         let (upper, lower) = teeth();
         assert_eq!((upper.len(), lower.len()), (6, 5));
-        let art = head().art;
+        let art = head(&still()).art;
         let teeth = &art[art.find(r##"<g fill="#fff">"##).expect("the teeth")..];
         let lo = teeth.find(r#"<g class="zlo">"#).expect("the lower jaw");
         assert_eq!(teeth[..lo].matches("<polygon").count(), 6);
@@ -243,15 +280,71 @@ mod tests {
         let (upper, lower) = teeth();
         near(wrap(upper[0][0]).0, (-4.4, 20.6));
         near(wrap(lower[2][1]).0, (29.1, 42.4));
-        let art = head().art;
+        let art = head(&still()).art;
         assert!(spike(&art, 0).contains("40.73,-33"), "the red tip moved");
     }
 
     #[test]
     fn the_silhouette_is_the_shape_without_paint() {
-        let s = head().silhouette;
+        let s = head(&still()).silhouette;
         assert!(!s.contains("fill=") && !s.contains("stroke="), "{s}");
         assert_eq!(s.matches(r#"class="zsp""#).count(), 7);
         assert!(!s.contains("zeye") && !s.contains("zlo"));
+    }
+
+    #[test]
+    fn toggles_add_their_class_and_nothing_else() {
+        let rest = head(&still());
+        assert!(!rest.beats);
+        let points = |svg: &str| -> Vec<String> {
+            svg.split(r#"points=""#)
+                .skip(1)
+                .map(|p| p[..p.find('"').unwrap()].to_string())
+                .collect()
+        };
+        let s = still();
+        for (class, p) in [
+            (
+                "zwave",
+                PunkLook {
+                    crest_wave: true,
+                    ..s
+                },
+            ),
+            (
+                "zflow",
+                PunkLook {
+                    rainbow_flow: true,
+                    ..s
+                },
+            ),
+            ("zchat", PunkLook { chatter: true, ..s }),
+            ("zpop", PunkLook { eye_pop: true, ..s }),
+        ] {
+            let h = head(&p);
+            assert!(h.beats, "{class} dances to the beat");
+            assert_eq!(points(&h.art), points(&rest.art), "{class} moved a shape");
+            assert_eq!(points(&h.silhouette), points(&rest.silhouette));
+            assert_eq!(h.art, format!(r#"<g class="{class}">{}</g>"#, rest.art));
+            // only the wave moves the outline; the rest have nothing to move there
+            let silhouette = if class == "zwave" {
+                format!(r#"<g class="{class}">{}</g>"#, rest.silhouette)
+            } else {
+                rest.silhouette.clone()
+            };
+            assert_eq!(h.silhouette, silhouette, "{class}");
+        }
+        let all = PunkLook {
+            crest_wave: true,
+            rainbow_flow: true,
+            chatter: true,
+            eye_pop: true,
+            ..s
+        };
+        assert!(
+            head(&all)
+                .art
+                .starts_with(r#"<g class="zwave zflow zchat zpop">"#)
+        );
     }
 }

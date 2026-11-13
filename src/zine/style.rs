@@ -9,6 +9,8 @@ pub const INK: &str = "#16161a";
 pub const HEAD: &str = "#0d0d12";
 /// the sunburst's dim wedges
 pub const RAYS: &str = "#1c1c21";
+/// the punk's eyes and teeth
+pub const WHITE: &str = "#fff";
 /// `zine.spot` when unset
 pub const SPOT: &str = "#e63946";
 /// front to back

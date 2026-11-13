@@ -7,7 +7,7 @@ use crate::blueprint::style::PAL;
 use crate::blueprint::trihex::pat_trihex;
 use crate::geom::{Lattice, fmt};
 use crate::mood::Mood;
-use crate::params::{Glyph, Ground, Rig, Scene, Snow, rider::Gear, trihex};
+use crate::params::{Glyph, Ground, PunkLook, Rig, Scene, Snow, rider::Gear, trihex};
 use crate::rng::PyRandom;
 use crate::zine;
 use crate::zine::halfpipe::halfpipe;
@@ -100,7 +100,7 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     }
     if scene.uses(Mood::Zine) {
         defs.push_str(&zine::defs(&scene.spot, frame.s));
-        css.push_str(&zine::css(matches!(scene.glyph, Glyph::Punk(_))));
+        css.push_str(&zine::css(&scene.glyph));
     }
 
     let (under, over) = match scene.ground {
@@ -153,7 +153,11 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     let (glyph, icon_transform, icon_filter) = match &scene.glyph {
         Glyph::Ship => (ico_ship(), on_lattice, Some("url(#ink)")),
         Glyph::Hexatri { rotate } => (ico_hexatri(*rotate), on_lattice, Some("url(#ink)")),
-        Glyph::Punk(rig) => (rider::icon(&scene.spot, rig, &punk::head()), in_print, None),
+        Glyph::Punk(p) => (
+            rider::icon(&scene.spot, &p.rig, &punk::head(p)),
+            in_print,
+            None,
+        ),
     };
 
     let mut label = match scene.ground {
@@ -166,7 +170,10 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     match scene.glyph {
         Glyph::Hexatri { .. } => {}
         Glyph::Ship => label.push_str(" with a spaceship icon"),
-        Glyph::Punk(Rig { gear, rpm, .. }) => {
+        Glyph::Punk(PunkLook {
+            rig: Rig { gear, rpm, .. },
+            ..
+        }) => {
             label.push_str(" with a punk head with a rainbow mohawk");
             label.push_str(match (gear, rpm > 0) {
                 (Gear::Board, true) => " over a spinning snowboard",

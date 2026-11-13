@@ -23,16 +23,19 @@ pub fn parse(text: &str) -> Result<Parameters, serde_json::Error> {
 pub enum Glyph {
     Hexatri { rotate: bool },
     Ship,
-    Punk(Rig),
+    Punk(PunkLook),
 }
 
-/// A zine head's gear and how it turns.
+/// A zine head's gear and how it turns, and how the head moves to the beat.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rig {
     pub gear: rider::Gear,
     pub ccw: bool,
     /// turns a minute; 0 = still
     pub rpm: u32,
+    pub motion: rider::Motion,
+    /// beats a minute, for every head animation
+    pub bpm: u32,
 }
 
 fn rig_of(r: Option<&Rider>) -> Rig {
@@ -41,7 +44,19 @@ fn rig_of(r: Option<&Rider>) -> Rig {
         gear: r.gear(),
         ccw: r.counter_clockwise,
         rpm: r.spin_rpm.unwrap_or(8),
+        motion: r.motion(),
+        bpm: if r.bpm == 0 { 96 } else { r.bpm },
     }
+}
+
+/// The punk's rig and which parts of its head move. Not `Punk`: that is the config message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PunkLook {
+    pub rig: Rig,
+    pub crest_wave: bool,
+    pub rainbow_flow: bool,
+    pub chatter: bool,
+    pub eye_pop: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,7 +114,10 @@ impl Scene {
             Glyph::Hexatri { rotate: true } => ("rotate", "hexatri"),
             Glyph::Hexatri { rotate: false } => ("static", "hexatri"),
             Glyph::Ship => ("static", "ship"),
-            Glyph::Punk(Rig { rpm: 0, .. }) => ("still", "punk"),
+            Glyph::Punk(PunkLook {
+                rig: Rig { rpm: 0, .. },
+                ..
+            }) => ("still", "punk"),
             Glyph::Punk(_) => ("spin", "punk"),
         };
         let overlay = if self.overlay.is_some() {
@@ -163,7 +181,13 @@ pub fn resolve(p: &Parameters) -> Scene {
         Some(icon::Glyph::Hexatri(h)) => Glyph::Hexatri {
             rotate: h.motion() == hexatri::Motion::Rotate,
         },
-        Some(icon::Glyph::Punk(p)) => Glyph::Punk(rig_of(p.rider.as_ref())),
+        Some(icon::Glyph::Punk(p)) => Glyph::Punk(PunkLook {
+            rig: rig_of(p.rider.as_ref()),
+            crest_wave: p.crest_wave,
+            rainbow_flow: p.rainbow_flow,
+            chatter: p.chatter,
+            eye_pop: p.eyes() == punk::Eyes::Pop,
+        }),
         None => Glyph::Hexatri { rotate: true },
     };
     let overlay =
@@ -221,10 +245,16 @@ pub fn validate(p: &Parameters) -> Result<(), Error> {
         hex_rgba(color).map_err(|e| Error::Invalid(format!("overlay.matrix.color: {e}")))?;
     }
     if let Some(icon::Glyph::Punk(punk)) = p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
-        let rpm = rig_of(punk.rider.as_ref()).rpm;
+        let Rig { rpm, bpm, .. } = rig_of(punk.rider.as_ref());
         if rpm > 30 {
             return Err(Error::Invalid(format!(
                 "icon.punk.rider.spin_rpm: {rpm} is above 30 (turns a minute; 0 = still)"
+            )));
+        }
+        // 0 resolved to 96 above, so it passes
+        if !(40..=200).contains(&bpm) {
+            return Err(Error::Invalid(format!(
+                "icon.punk.rider.bpm: {bpm} is outside 40-200 (beats a minute; 0 = 96)"
             )));
         }
     }
@@ -354,16 +384,25 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
     let mut spot = scene(json!({"summit": {}}), hexatri(), json!({}));
     spot["zine"] = json!({"spot": "#22c8e5"});
     out.push(spot);
-    // each rider setting once, on a summit punk; reverse on a still gear would repeat a picture
-    for rider in [
-        json!({"gear": "CROSSED_SKIS"}),
-        json!({"counter_clockwise": true}),
-        json!({"spin_rpm": 0}),
-        json!({"spin_rpm": 20}),
+    // each rider and punk setting once, on a summit punk; reverse on a still gear, or a bpm with
+    // nothing moving to it, would repeat a picture
+    let rider = |rider| json!({"rider": rider});
+    for punk in [
+        rider(json!({"gear": "CROSSED_SKIS"})),
+        rider(json!({"counter_clockwise": true})),
+        rider(json!({"spin_rpm": 0})),
+        rider(json!({"spin_rpm": 20})),
+        rider(json!({"motion": "BOB"})),
+        rider(json!({"motion": "SWAY"})),
+        rider(json!({"motion": "BOB", "bpm": 150})),
+        json!({"crest_wave": true}),
+        json!({"rainbow_flow": true}),
+        json!({"chatter": true}),
+        json!({"eyes": "POP"}),
     ] {
         out.push(scene(
             json!({"summit": {}}),
-            json!({"punk": {"rider": rider}}),
+            json!({"punk": punk}),
             json!({}),
         ));
     }
@@ -523,9 +562,9 @@ mod tests {
         assert!(validate(&parse(&punk(r#"{"spin_rpm":30}"#)).unwrap()).is_ok());
         let rig = |rider: &str| match resolve(&parse(&punk(rider)).unwrap()) {
             Scene {
-                glyph: Glyph::Punk(r),
+                glyph: Glyph::Punk(p),
                 ..
-            } => r,
+            } => p.rig,
             s => panic!("{s:?}"),
         };
         assert_eq!(rig(r#"{"spin_rpm":0}"#).rpm, 0);
@@ -533,6 +572,25 @@ mod tests {
         let s = resolve(&parse(&punk(r#"{"spin_rpm":0}"#)).unwrap());
         assert!(s.uses(Mood::Zine) && s.uses(Mood::Blueprint));
         assert_eq!(s.slug(), "static-still-punk-none-none");
+    }
+
+    #[test]
+    fn bpm_out_of_range_is_rejected() {
+        let punk = |bpm: u32| {
+            parse(&serde_json::json!({"icon": {"punk": {"rider": {"bpm": bpm}}}}).to_string())
+                .unwrap()
+        };
+        for bad in [39, 201] {
+            let e = validate(&punk(bad)).unwrap_err().to_string();
+            assert!(e.starts_with("icon.punk.rider.bpm:"), "{e}");
+        }
+        for ok in [0, 40, 200] {
+            assert!(validate(&punk(ok)).is_ok(), "rejected {ok}");
+        }
+        let Glyph::Punk(p) = resolve(&punk(0)).glyph else {
+            panic!("not a punk")
+        };
+        assert_eq!(p.rig.bpm, 96, "0 is the default tempo");
     }
 
     #[test]
@@ -548,7 +606,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 89);
+        assert_eq!(cfgs.len(), 96);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#

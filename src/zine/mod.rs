@@ -11,6 +11,9 @@ pub mod treeline;
 use askama::Template;
 
 use crate::geom::fmt;
+use crate::params::Glyph;
+use crate::params::rider::Motion;
+use style::{RAINBOW, shade};
 
 /// The spot halftone every zine disc is filled with.
 #[derive(Template)]
@@ -33,10 +36,10 @@ pub fn defs(spot: &str, s: f64) -> String {
     .expect("writing to a String")
 }
 
-/// Every zine rule; a rider's only when a zine head is in the scene. Classes and keyframes start
-/// with `z`, so they never meet blueprint's. Each animation rests where it starts, so the closing
-/// reduced-motion rule leaves the print intact.
-pub fn css(rider: bool) -> String {
+/// Every zine rule the scene uses, and no other: a head animation's rules only when it is on.
+/// Classes and keyframes start with `z`, so they never meet blueprint's. Each animation rests where
+/// it starts, so the closing reduced-motion rule leaves the print intact.
+pub fn css(glyph: &Glyph) -> String {
     let mut out = concat!(
         "@keyframes zrot{to{transform:rotate(360deg)}}",
         // the origin is inline: it follows the head
@@ -47,12 +50,77 @@ pub fn css(rider: bool) -> String {
         ".zblizzard{animation:zfall 6s linear infinite}",
     )
     .to_string();
-    if rider {
+    if let Glyph::Punk(p) = glyph {
         // duration and direction are inline: they follow the rider's rpm
         out.push_str(
             ".zspin{transform-box:fill-box;transform-origin:center;animation:zrot linear infinite}",
         );
+        // every head animation runs on the rider's inline --beat
+        out.push_str(match p.rig.motion {
+            Motion::Still => "",
+            Motion::Bob => concat!(
+                ".zbob{animation:zbob var(--beat) ease-in-out infinite}",
+                "@keyframes zbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}",
+            ),
+            // about the neck, the bottom of the head
+            Motion::Sway => concat!(
+                ".zsway{transform-box:fill-box;transform-origin:50% 100%;",
+                "animation:zsway calc(var(--beat)*2) ease-in-out infinite alternate}",
+                "@keyframes zsway{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}",
+            ),
+        });
+        if p.crest_wave {
+            out.push_str(concat!(
+                ".zwave .zsp{transform-box:fill-box;transform-origin:50% 100%;",
+                "animation:zwave var(--beat) ease-in-out infinite;",
+                "animation-delay:calc(var(--i)*var(--beat)*-.13)}",
+                "@keyframes zwave{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}",
+            ));
+        }
+        if p.rainbow_flow {
+            out.push_str(&rainbow_flow());
+        }
+        if p.chatter {
+            out.push_str(concat!(
+                ".zchat .zlo{animation:zchat calc(var(--beat)/2) steps(2,jump-none) infinite}",
+                "@keyframes zchat{from{transform:translateY(0)}to{transform:translateY(4px)}}",
+            ));
+        }
+        if p.eye_pop {
+            out.push_str(concat!(
+                ".zpop .zeye{transform-box:fill-box;transform-origin:center;",
+                "animation:zpop calc(var(--beat)*4) ease-out infinite}",
+                "@keyframes zpop{0%,12%,100%{transform:scale(1)}4%{transform:scale(1.45)}}",
+            ));
+        }
     }
     out.push_str("@media (prefers-reduced-motion:reduce){*{animation:none!important}}");
     out
+}
+
+/// The crest's colours travel round it once every 8 beats. Each spike's lit half cycles the
+/// rainbow and its shade half the shaded rainbow, a seventh of the cycle behind the spike before
+/// it, so at t = 0 (and at rest) every spike shows its own colour. Fill keyframes, not a
+/// `hue-rotate` filter: measured, the filter costs frames.
+fn rainbow_flow() -> String {
+    let cycle = |name: &str, colours: [String; 7]| {
+        let stops: String = (0..=7)
+            .map(|k| {
+                format!(
+                    "{}%{{fill:{}}}",
+                    fmt(k as f64 * 100.0 / 7.0),
+                    colours[k % 7]
+                )
+            })
+            .collect();
+        format!("@keyframes {name}{{{stops}}}")
+    };
+    [
+        ".zflow .zsp>*{animation:zflow calc(var(--beat)*8) linear infinite;",
+        "animation-delay:calc(var(--i)*var(--beat)*-8/7)}",
+        ".zflow .zsp>:last-child{animation-name:zflowshade}",
+        &cycle("zflow", RAINBOW.map(String::from)),
+        &cycle("zflowshade", RAINBOW.map(|c| shade(c, punk::NAPE_SHADE))),
+    ]
+    .concat()
 }

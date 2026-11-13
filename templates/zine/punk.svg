@@ -1,9 +1,9 @@
 {% macro spike(s) %}<g class="zsp" style="{{ s.style }}"><polygon points="{{ s.lit }}"{% if paint +%} fill="{{ s.lit_fill }}"{% endif %}/><polygon points="{{ s.shade }}"{% if paint +%} fill="{{ s.shade_fill }}"{% endif %}/></g>{% endmacro %}
-{% for s in behind %}{{ spike(s) }}{% endfor %}
+{% if let Some(c) = class %}<g class="{{ c }}">{% endif %}{% for s in behind %}{{ spike(s) }}{% endfor %}
 <circle cy="{{ cy }}" r="{{ r }}"{% if paint +%} fill="{{ head }}"{% endif %}/>
-{% if paint %}<g stroke="#fff" stroke-width="6.5" stroke-linecap="round">
+{% if paint %}<g stroke="{{ white }}" stroke-width="6.5" stroke-linecap="round">
 {% for e in eyes %}<g class="zeye">{% for l in e %}<line x1="{{ l.0 }}" y1="{{ l.1 }}" x2="{{ l.2 }}" y2="{{ l.3 }}"/>{% endfor %}</g>{% endfor %}
-</g><g fill="#fff">
+</g><g fill="{{ white }}">
 {% for t in upper %}<polygon points="{{ t }}"/>{% endfor %}
 <g class="zlo">{% for t in lower %}<polygon points="{{ t }}"/>{% endfor %}</g></g>{% endif %}
-{% for s in front %}{{ spike(s) }}{% endfor %}
+{% for s in front %}{{ spike(s) }}{% endfor %}{% if class.is_some() %}</g>{% endif %}

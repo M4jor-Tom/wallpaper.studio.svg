@@ -59,14 +59,24 @@ message Hexatri {
 }
 message Ship {}
 
-// Shared by every zine head: the gear spinning behind it.
+// Shared by every zine head: the gear spinning behind it, and the beat the head moves to.
 message Rider {
   enum Gear { BOARD = 0; CROSSED_SKIS = 1; }
+  enum Motion { STILL = 0; BOB = 1; SWAY = 2; }  // the head only, never the gear
   Gear gear = 1;
   bool counter_clockwise = 2;    // inert when spin_rpm is 0
   optional uint32 spin_rpm = 3;  // turns a minute, 0-30; unset = 8, 0 = still
+  Motion motion = 4;
+  uint32 bpm = 5;                // 40-200; 0 = 96; inert when no head animation is on
 }
-message Punk { Rider rider = 1; }
+message Punk {
+  enum Eyes { STILL = 0; POP = 1; }
+  Rider rider = 1;
+  bool crest_wave = 2;    // each spike rocks on the beat
+  bool rainbow_flow = 3;  // the crest colours travel, once every 8 beats
+  bool chatter = 4;       // the lower teeth drop every half beat
+  Eyes eyes = 5;
+}
 
 message Overlay {
   oneof layer { Matrix matrix = 1; }
