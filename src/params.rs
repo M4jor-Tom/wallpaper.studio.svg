@@ -10,7 +10,8 @@ pub use generated::*;
 pub const DESCRIPTOR: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/descriptor.bin"));
 
 use crate::Error;
-use crate::style::{MATRIX_COLOR, hex_rgba};
+use crate::blueprint::style::MATRIX_COLOR;
+use crate::color::hex_rgba;
 
 pub fn parse(text: &str) -> Result<Parameters, serde_json::Error> {
     serde_json::from_str(text)
@@ -272,7 +273,10 @@ mod tests {
         assert_eq!(rain.color, "#395e53cc");
 
         let s = resolve(&parse(r#"{"overlay":{"matrix":{"angle":0}}}"#).unwrap());
-        assert_eq!(s.overlay.unwrap().color, crate::style::MATRIX_COLOR);
+        assert_eq!(
+            s.overlay.unwrap().color,
+            crate::blueprint::style::MATRIX_COLOR
+        );
 
         // STATIC -> rotate:false; a swapped variant would pass every other test.
         let s = resolve(&parse(r#"{"icon":{"hexatri":{"motion":"STATIC"}}}"#).unwrap());

@@ -1,0 +1,3 @@
+{"output": {"file": {"path": "docs/moods/blueprint/samples/scan-ship-space.svg", "resolution": "1280x720"}},
+ "background": {"motion": "SCAN", "image": "STARFIELD"},
+ "icon": {"ship": {}}}

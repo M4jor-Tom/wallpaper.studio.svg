@@ -1,13 +1,11 @@
 //! Animated SVG background builder — trihexagonal blueprint.
 
+pub mod blueprint;
+pub mod color;
 pub mod geom;
-pub mod icon;
-pub mod matrix;
 pub mod params;
 pub mod rng;
-pub mod style;
 pub mod svg;
-pub mod trihex;
 
 use std::fmt;
 

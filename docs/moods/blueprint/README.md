@@ -255,7 +255,7 @@ add a second focal point.
 ## Regenerating
 
 ```sh
-for f in docs/mood/samples/*.json; do target/release/bgsvg "$f"; done
+for f in docs/moods/blueprint/samples/*.json; do target/release/bgsvg "$f"; done
 ```
 
 The `.svg` files in `samples/` are the live artifacts — open them in a browser to

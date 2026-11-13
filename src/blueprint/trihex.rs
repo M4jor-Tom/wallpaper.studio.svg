@@ -3,10 +3,12 @@ use std::f64::consts::PI;
 
 use askama::Template;
 
+use crate::blueprint::style::{
+    BLIND_S, FILL_O, PAL, SPACE_FRAC, SPACE_STARS, SPACE_STROKE_O, STROKE_O, VOID,
+};
 use crate::geom::{Lattice, NB, SQRT3, fmt, pts, regular_poly};
 use crate::params::{Scene, background};
 use crate::rng::{PyRandom, cell_rng};
-use crate::style::{BLIND_S, FILL_O, PAL, SPACE_FRAC, SPACE_STARS, SPACE_STROKE_O, STROKE_O, VOID};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Role {
@@ -192,7 +194,7 @@ struct HexBorder {
 /// Layering is fixed by the template's loop order (voids, tris, hexes), not by field order.
 /// The `+%}` markers in trihex.svg are load-bearing: they keep the space before an optional attribute.
 #[derive(askama::Template)]
-#[template(path = "trihex.svg")]
+#[template(path = "blueprint/trihex.svg")]
 struct Trihex {
     voids: Vec<VoidCell>,
     tris: Vec<TriFill>,

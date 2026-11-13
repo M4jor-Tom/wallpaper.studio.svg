@@ -1,17 +1,17 @@
 use askama::Template;
 
+use crate::blueprint::icon::{ico_hexatri, ico_ship};
+use crate::blueprint::matrix::pat_matrix;
+use crate::blueprint::style::{PAL, css};
+use crate::blueprint::trihex::pat_trihex;
 use crate::geom::{Lattice, fmt};
-use crate::icon::{ico_hexatri, ico_ship};
-use crate::matrix::pat_matrix;
 use crate::params::{Glyph, Scene, background};
 use crate::rng::PyRandom;
-use crate::style::{PAL, css};
-use crate::trihex::pat_trihex;
 
 /// `bg` is `userSpaceOnUse` so any shape can paint canvas: `objectBoundingBox` would squeeze the ramp
 /// into one hexagon, and a shut CLOSEOPEN blind would show as a patch.
 #[derive(askama::Template)]
-#[template(path = "defs.svg")]
+#[template(path = "blueprint/defs.svg")]
 struct Defs {
     w04: String,
     h: String,

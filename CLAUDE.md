@@ -23,7 +23,7 @@ Without Nix: Rust 1.85+ and `protoc` on `PATH`.
 
 ## Architecture
 
-`src/svg.rs` assembles the page; `src/trihex.rs`, `src/matrix.rs` and `src/icon.rs` draw it; `src/params.rs` is the boundary with the outside world; `src/rng.rs` is why the picture is reproducible. `flake.nix` just wraps the crate as the `bgsvg` app. Read `docs/mood/` (README + `matrix.png` + `samples/`) before touching anything visual — it is the graphic-mood contract, and the point is to extend the look without breaking it.
+`src/svg.rs` assembles the page; `src/blueprint/{trihex,matrix,icon}.rs` draw it; `src/params.rs` is the boundary with the outside world; `src/rng.rs` is why the picture is reproducible. `flake.nix` just wraps the crate as the `bgsvg` app. Read `docs/moods/blueprint/` (README + `matrix.png` + `samples/`) before touching anything visual — it is the graphic-mood contract, and the point is to extend the look without breaking it.
 
 **One config, one render** — an optional JSON config path is the whole input
 (no argument renders the schema's defaults) and `parameters.proto` is its

@@ -1,8 +1,9 @@
 use askama::Template;
 
+use crate::blueprint::style::{MATRIX_FRAC, MATRIX_GLYPHS, MATRIX_HEAD_STEP, MATRIX_KF, MATRIX_S};
+use crate::color::hex_rgba;
 use crate::geom::{Lattice, fmt};
 use crate::rng::cell_rng;
-use crate::style::{MATRIX_FRAC, MATRIX_GLYPHS, MATRIX_HEAD_STEP, MATRIX_KF, MATRIX_S, hex_rgba};
 
 /// `ch` is emitted unescaped: safe only because `MATRIX_GLYPHS` excludes `< > & " '`.
 struct RainCell {
@@ -19,7 +20,7 @@ struct RainColumn {
 }
 
 #[derive(askama::Template)]
-#[template(path = "matrix.svg")]
+#[template(path = "blueprint/matrix.svg")]
 struct Matrix {
     fs: String,
     rgb: String,
@@ -96,9 +97,9 @@ pub fn pat_matrix(w: u32, h: u32, lat: &Lattice, seed: u32, angle: f64, color: &
 
 #[cfg(test)]
 mod tests {
+    use crate::blueprint::style::{MATRIX_COLOR, MATRIX_GLYPHS};
     use crate::geom::fmt;
     use crate::params::{Glyph, Rain, Scene, background};
-    use crate::style::{MATRIX_COLOR, MATRIX_GLYPHS};
     use crate::svg::build_svg;
 
     fn scene(overlay: Option<Rain>) -> Scene {

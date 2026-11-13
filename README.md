@@ -7,7 +7,7 @@ One Rust crate, no external assets. Sizes scale with `min(width, height)`,
 so pattern density is constant across resolutions.
 
 The graphic mood — and the rules for extending it without breaking it — is
-documented in [`docs/mood/`](docs/mood/).
+documented in [`docs/moods/blueprint/`](docs/moods/blueprint/).
 
 ## Animations
 

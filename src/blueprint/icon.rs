@@ -2,8 +2,8 @@ use std::f64::consts::PI;
 
 use askama::Template;
 
+use crate::blueprint::style::PAL;
 use crate::geom::{fmt, pts, regular_poly};
-use crate::style::PAL;
 
 /// One ring of `ico_hexatri`'s badge: radius, sides, start angle, colour,
 /// stroke width, stroke opacity, rotate-origin-y%.
@@ -23,7 +23,7 @@ struct HexRing {
 }
 
 #[derive(askama::Template)]
-#[template(path = "hexatri.svg")]
+#[template(path = "blueprint/hexatri.svg")]
 struct Hexatri {
     rings: Vec<HexRing>,
     a: &'static str,
@@ -79,7 +79,7 @@ struct Exhaust {
 }
 
 #[derive(askama::Template)]
-#[template(path = "ship.svg")]
+#[template(path = "blueprint/ship.svg")]
 struct Ship {
     a: &'static str,
     b: &'static str,
