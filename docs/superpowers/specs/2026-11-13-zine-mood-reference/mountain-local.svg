@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-160 -150 320 300" preserveAspectRatio="xMidYMid slice" class="m-bob l-locks l-frost l-glint l-breath" style="--beat:0.625s"><style>.spin{transform-box:fill-box;transform-origin:center;animation:sp 7.5s linear infinite}.rays2{transform-box:view-box;transform-origin:320px 150px;animation:sp 120s linear infinite}
+.spin{transform-box:fill-box;transform-origin:center;animation:sp 7.5s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.rays{transform-box:view-box;transform-origin:320px 190px;animation:sp 120s linear infinite}
+.fall{animation:fall 18s linear infinite}@keyframes fall{to{transform:translateY(360px)}}
+.hd,.sp,.eye,.lo{transform-box:fill-box}
+.m-bob .hd{animation:bob var(--beat) ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.m-bang .hd{transform-origin:50% 100%;animation:bang var(--beat) cubic-bezier(.2,.8,.3,1) infinite}
+@keyframes bang{0%,100%{transform:rotate(0)}14%{transform:rotate(14deg)}48%{transform:rotate(-3deg)}}
+.m-sway .hd{transform-origin:50% 100%;animation:sway calc(var(--beat)*2) ease-in-out infinite alternate}
+@keyframes sway{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}
+.c-wave .sp{transform-origin:50% 100%;animation:wave var(--beat) ease-in-out infinite;animation-delay:calc(var(--i)*var(--beat)*-.13)}
+@keyframes wave{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+.c-flow .cr{animation:hue calc(var(--beat)*8) linear infinite}
+@keyframes hue{to{filter:hue-rotate(360deg)}}
+.t-chat .lo{animation:chat calc(var(--beat)/2) steps(2,jump-none) infinite}
+@keyframes chat{from{transform:translateY(0)}to{transform:translateY(4px)}}
+.e-pop .eye{transform-origin:center;animation:pop calc(var(--beat)*4) ease-out infinite}
+@keyframes pop{0%,12%,100%{transform:scale(1)}4%{transform:scale(1.45)}}
+.e-twist .eye{transform-origin:center;animation:twist calc(var(--beat)*2) cubic-bezier(.6,0,.2,1) infinite}
+@keyframes twist{0%,40%{transform:rotate(0)}50%,90%{transform:rotate(45deg)}100%{transform:rotate(90deg)}}
+@media (prefers-reduced-motion:reduce){.spin,.fall,.rays,.hd,.sp,.cr,.lo,.eye{animation:none!important}}
+
+
+
+
+
+
+
+
+
+.breath{display:none}
+.p-pom .pom{transform-box:fill-box;transform-origin:50% 100%;animation:pom var(--beat) ease-in-out infinite}
+@keyframes pom{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(16deg)}}
+.p-flow .lens{animation:hue calc(var(--beat)*8) linear infinite}
+.gl{opacity:0}
+.p-glint .gl,.l-glint .gl{animation:glint calc(var(--beat)*4) ease-in-out infinite}
+@keyframes glint{0%,55%{transform:translateX(0);opacity:0}62%{opacity:1}100%{transform:translateX(130px);opacity:0}}
+.p-breath .breath,.l-breath .breath{display:inline;animation:puff calc(var(--beat)*2) ease-out infinite}
+@keyframes puff{0%{opacity:0;transform:translate(-6px,4px)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-10px)}}
+.l-wind .bd{transform-box:fill-box;transform-origin:50% 0;animation:wind calc(var(--beat)*2) ease-in-out infinite alternate}
+@keyframes wind{from{transform:skewX(-6deg)}to{transform:skewX(6deg)}}
+.fr{transform-box:fill-box;transform-origin:center}
+.l-frost .fr{animation:tw calc(var(--beat)*2) ease-in-out infinite;animation-delay:calc(var(--i)*var(--beat)*-.29)}
+@keyframes tw{0%,100%{transform:scale(.4);opacity:.4}50%{transform:scale(1.4);opacity:1}}
+@media (prefers-reduced-motion:reduce){.pom,.lens,.gl,.breath,.bd,.fr{animation:none!important}}
+[data-only]{display:none}
+
+.lock,.stache{transform-box:fill-box}
+.l-locks .lock{transform-origin:50% 0;animation:lk var(--beat) ease-in-out infinite;animation-delay:calc(var(--i)*var(--beat)*-.18)}
+@keyframes lk{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+.l-twitch .stache{transform-origin:50% 50%;animation:tw2 calc(var(--beat)*4) ease-in-out infinite}
+@keyframes tw2{0%,72%,100%{transform:none}76%{transform:rotate(-7deg) scale(1.08,.9)}81%{transform:rotate(6deg) scale(1.06,.92)}86%{transform:none}}
+.drop{opacity:0}
+.l-drip .drop{animation:drip calc(var(--beat)*4) ease-in infinite}
+@keyframes drip{0%,50%{transform:translateY(0) scale(.2);opacity:0}70%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(46px) scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.lock,.stache,.drop{animation:none!important}}
+</style><defs><clipPath id="mountain-local-bd"><path d="M-48 14 Q -52 50 -38 68 L 38 68 Q 52 50 48 14 Q 40 34 24 32 Q 10 40 0 34 Q -10 40 -24 32 Q -40 34 -48 14 Z"/></clipPath><filter id="mountain-local-cut" filterUnits="userSpaceOnUse" x="-160" y="-160" width="320" height="320"><feMorphology in="SourceAlpha" operator="dilate" radius="6" result="d"/><feFlood flood-color="#f3efe6"/><feComposite in2="d" operator="in" result="o"/><feDropShadow in="o" dx="4" dy="5" stdDeviation="0" flood-color="#e63946" result="s"/><feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="-160" y="-150" width="320" height="300" fill="#111114"/><g transform="translate(0,8) scale(1.0)" filter="url(#mountain-local-cut)"><g class="spin"><rect x="-108" y="-21" width="216" height="42" rx="21" fill="#16161a" stroke="#f3efe6" stroke-width="3"/><rect x="-96" y="-3" width="192" height="6" rx="3" fill="#e63946"/><rect x="-86" y="-14" width="22" height="28" rx="5" fill="#f3efe6"/><rect x="64" y="-14" width="22" height="28" rx="5" fill="#f3efe6"/></g><g class="hd"><circle cy="8" r="46" fill="#f3efe6" stroke="#16161a" stroke-width="3"/><path d="M-46 -20 C -46 -54 46 -54 46 -20 Z" fill="#16161a" stroke="#f3efe6" stroke-width="2.4"/><rect x="-48" y="-36" width="96" height="16" rx="6" fill="#e63946" stroke="#16161a" stroke-width="2.4"/><g stroke="#16161a" stroke-width="1.4" stroke-opacity=".5"><line x1="-40" y1="-35" x2="-40" y2="-21"/><line x1="-33" y1="-35" x2="-33" y2="-21"/><line x1="-26" y1="-35" x2="-26" y2="-21"/><line x1="-19" y1="-35" x2="-19" y2="-21"/><line x1="-12" y1="-35" x2="-12" y2="-21"/><line x1="-5" y1="-35" x2="-5" y2="-21"/><line x1="2" y1="-35" x2="2" y2="-21"/><line x1="9" y1="-35" x2="9" y2="-21"/><line x1="16" y1="-35" x2="16" y2="-21"/><line x1="23" y1="-35" x2="23" y2="-21"/><line x1="30" y1="-35" x2="30" y2="-21"/><line x1="37" y1="-35" x2="37" y2="-21"/></g><path d="M-50 -8 Q 0 -16 50 -8 L 46 12 Q 24 18 6 8 L -6 8 Q -24 18 -46 12 Z" fill="#16161a"/><path d="M-40 -6 Q -20 -10 -10 -6" fill="none" stroke="#e63946" stroke-width="3" stroke-linecap="round"/><path d="M10 -6 Q 22 -10 40 -6" fill="none" stroke="#e63946" stroke-width="3" stroke-linecap="round"/><clipPath id="mountain-local-gc"><path d="M-50 -8 Q 0 -16 50 -8 L 46 12 Q 24 18 6 8 L -6 8 Q -24 18 -46 12 Z"/></clipPath><g clip-path="url(#mountain-local-gc)"><polygon class="gl" points="-50,-30 -36,-30 -60,40 -74,40" fill="#f3efe6" fill-opacity=".75"/></g><path d="M-7 10 Q -10 26 0 28 Q 10 26 7 10" fill="#f3efe6" stroke="#16161a" stroke-width="2.4" stroke-linejoin="round"/><g class="lock" style="--i:0"><path d="M-42 58 Q -40 74 -26 86 Q -28 70 -18 58 Z" fill="#16161a" stroke="#f3efe6" stroke-width="2.2" stroke-linejoin="round"/></g><g class="lock" style="--i:1"><path d="M-27 58 Q -25 84 -11 96 Q -13 80 -3 58 Z" fill="#16161a" stroke="#f3efe6" stroke-width="2.2" stroke-linejoin="round"/></g><g class="lock" style="--i:2"><path d="M-12 58 Q -10 88 4 100 Q 2 84 12 58 Z" fill="#16161a" stroke="#f3efe6" stroke-width="2.2" stroke-linejoin="round"/></g><g class="lock" style="--i:3"><path d="M3 58 Q 5 84 19 96 Q 17 80 27 58 Z" fill="#16161a" stroke="#f3efe6" stroke-width="2.2" stroke-linejoin="round"/></g><g class="lock" style="--i:4"><path d="M18 58 Q 20 74 34 86 Q 32 70 42 58 Z" fill="#16161a" stroke="#f3efe6" stroke-width="2.2" stroke-linejoin="round"/></g><path d="M-48 14 Q -52 50 -38 68 L 38 68 Q 52 50 48 14 Q 40 34 24 32 Q 10 40 0 34 Q -10 40 -24 32 Q -40 34 -48 14 Z" fill="#16161a"/><g clip-path="url(#mountain-local-bd)"><g stroke="#e63946" stroke-width="1.1"><line x1="0" y1="-42" x2="56" y2="14"/><line x1="0" y1="-37" x2="56" y2="19"/><line x1="0" y1="-32" x2="56" y2="24"/><line x1="0" y1="-27" x2="56" y2="29"/><line x1="0" y1="-22" x2="56" y2="34"/><line x1="0" y1="-17" x2="56" y2="39"/><line x1="0" y1="-12" x2="56" y2="44"/><line x1="0" y1="-7" x2="56" y2="49"/><line x1="0" y1="-2" x2="56" y2="54"/><line x1="0" y1="3" x2="56" y2="59"/><line x1="0" y1="8" x2="56" y2="64"/><line x1="0" y1="13" x2="56" y2="69"/><line x1="0" y1="18" x2="56" y2="74"/><line x1="0" y1="23" x2="56" y2="79"/><line x1="0" y1="28" x2="56" y2="84"/><line x1="0" y1="33" x2="56" y2="89"/><line x1="0" y1="38" x2="56" y2="94"/><line x1="0" y1="43" x2="56" y2="99"/><line x1="0" y1="48" x2="56" y2="104"/><line x1="0" y1="53" x2="56" y2="109"/><line x1="0" y1="58" x2="56" y2="114"/><line x1="0" y1="63" x2="56" y2="119"/><line x1="0" y1="68" x2="56" y2="124"/></g></g><path d="M-38 68 Q -52 50 -48 14 Q -40 34 -24 32 Q -10 40 0 34 Q 10 40 24 32 Q 40 34 48 14 Q 52 50 38 68" fill="none" stroke="#f3efe6" stroke-width="2.6" stroke-linejoin="round"/><g class="fr" style="--i:0"><path d="M-33 50h6M-30 47v6" stroke="#f3efe6" stroke-width="1.6"/></g><g class="fr" style="--i:1"><path d="M-15 60h6M-12 57v6" stroke="#f3efe6" stroke-width="1.6"/></g><g class="fr" style="--i:2"><path d="M5 52h6M8 49v6" stroke="#f3efe6" stroke-width="1.6"/></g><g class="fr" style="--i:3"><path d="M23 62h6M26 59v6" stroke="#f3efe6" stroke-width="1.6"/></g><g class="fr" style="--i:4"><path d="M31 46h6M34 43v6" stroke="#f3efe6" stroke-width="1.6"/></g><g class="fr" style="--i:5"><path d="M-41 58h6M-38 55v6" stroke="#f3efe6" stroke-width="1.6"/></g><path d="M-9 46 Q 0 50 9 46" fill="none" stroke="#f3efe6" stroke-width="2.2" stroke-linecap="round"/><g class="stache"><path d="M-28 36 Q -14 26 0 32 Q 14 26 28 36 Q 14 40 0 36 Q -14 40 -28 36 Z" fill="#16161a" stroke="#f3efe6" stroke-width="2"/><path d="M-19 38 L -16 45 L -13 38 Z" fill="#f3efe6"/><path d="M-3 38 L 0 48 L 3 38 Z" fill="#f3efe6"/><path d="M13 38 L 16 45 L 19 38 Z" fill="#f3efe6"/></g><circle class="drop" cx="0" cy="50" r="2.6" fill="#f3efe6"/><g class="breath" fill="#f3efe6"><circle cx="22" cy="44" r="4.0" fill-opacity="0.75"/><circle cx="34" cy="36" r="6.5" fill-opacity="0.53"/><circle cx="46" cy="28" r="9.0" fill-opacity="0.31"/></g></g></g></svg>
