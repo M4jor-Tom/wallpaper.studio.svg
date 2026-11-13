@@ -27,9 +27,9 @@ Without Nix: Rust 1.85+ and `protoc` on `PATH`.
 
 **One config, one render** — an optional JSON config path is the whole input
 (no argument renders the schema's defaults) and `parameters.proto` is its
-schema; the config path, `--configs`, which dumps `params::valid_configs` for the
-corpus harness, and `--descriptor`, which dumps the compiled schema for
-consumers that cannot read the Rust enums, are the only CLI surface left. **Conditional rules are structural where the model
+schema; the config path and `--configs`, which dumps `params::valid_configs` for the
+corpus harness, are the only CLI surface left; consumers needing the compiled
+schema read `params::DESCRIPTOR`. **Conditional rules are structural where the model
 allows it, and rejected where it does not.** A motion belongs to the icon that
 declares it (`Hexatri.Motion`; `Ship` declares none, and nothing assumes the
 next glyph rotates), and the matrix angle and colour live inside `Matrix` — so

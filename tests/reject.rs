@@ -53,6 +53,12 @@ fn every_bad_config_exits_two() {
     rejected(None, "a missing config file must be rejected");
 }
 
+#[test]
+fn two_arguments_are_a_usage_error() {
+    let args = ["--configs".to_string(), "--configs".to_string()];
+    assert_eq!(bgsvg::run(&args), 2);
+}
+
 // the control: otherwise a run() that always returned 2 would pass every rejection above
 #[test]
 fn a_valid_config_exits_zero() {

@@ -108,19 +108,9 @@ pub fn run(args: &[String]) -> i32 {
             }
             return 0;
         }
-        [a] if a == "--descriptor" => {
-            use std::io::Write;
-            return match std::io::stdout().write_all(params::DESCRIPTOR) {
-                Ok(()) => 0,
-                Err(e) => {
-                    eprintln!("--descriptor: {e}");
-                    2
-                }
-            };
-        }
         [a] => (a.clone(), std::fs::read_to_string(a).map_err(Error::Io)),
         _ => {
-            eprintln!("usage: bgsvg [config.json | --configs | --descriptor]");
+            eprintln!("usage: bgsvg [config.json | --configs]");
             return 2;
         }
     };

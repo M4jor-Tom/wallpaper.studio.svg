@@ -6,7 +6,7 @@
 | Status   | Accepted; supersedes [[0011]] and [[0012]] |
 | Deciders | theta                          |
 | Branch   | `master`                       |
-| Commit   | pending                        |
+| Commit   | `323c78f` and its child        |
 
 ## Context
 
@@ -28,6 +28,10 @@ checking anything, including in `nix build`.
 We will delete `crates/bgsvg-wasm`, `tests/wasm.rs`, `tests/wasm.mjs` and
 `packages.bgsvg-wasm`, and stop being a workspace. `bgsvg` is one crate again,
 and its public Rust API is the integration surface for consumers.
+
+`bgsvg --descriptor` goes too. [[0012]] added it with the binding for the old
+TypeScript UI's drift check; the Rust UI decodes `params::DESCRIPTOR` instead,
+which stays.
 
 `render_to_string` stays. [[0011]] introduced it for the binding; the UI now
 calls it in the binding's place, and it holds the zero-dimension guard that the
@@ -66,9 +70,6 @@ which is exactly what a binding would have wrapped.
 
 ### Neutral
 
-- `bgsvg --descriptor` was added alongside the binding ([[0012]]) for the old
-  TypeScript UI's drift check. The Rust UI reads `params::DESCRIPTOR` instead,
-  but the flag is CLI surface for other languages and is kept.
 - The UI pins a revision, so nothing changes for it until it updates (Next steps).
 
 ## Resumption (for Agent)

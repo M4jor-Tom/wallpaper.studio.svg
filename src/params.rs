@@ -6,7 +6,7 @@ mod generated {
 }
 pub use generated::*;
 
-/// `parameters.proto` as a `FileDescriptorSet`, for consumers that cannot read the Rust enums.
+/// `parameters.proto` as a `FileDescriptorSet`, for consumers that walk the schema at runtime.
 pub const DESCRIPTOR: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/descriptor.bin"));
 
 use crate::Error;

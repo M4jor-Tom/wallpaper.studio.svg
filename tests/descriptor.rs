@@ -22,12 +22,3 @@ fn the_descriptor_carries_the_whole_schema() {
         assert!(s.contains(name), "descriptor does not mention {name}");
     }
 }
-
-#[test]
-fn the_flag_exits_clean() {
-    assert_eq!(bgsvg::run(&["--descriptor".to_string()]), 0);
-    assert_eq!(
-        bgsvg::run(&["--descriptor".to_string(), "--configs".to_string()]),
-        2
-    );
-}
