@@ -1,4 +1,5 @@
 //! The zine mood: a black print with paper linework and one spot ink.
+pub mod halfpipe;
 pub mod print;
 pub mod snow;
 pub mod style;

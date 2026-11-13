@@ -1,0 +1,11 @@
+<rect width="{{ ws }}" height="{{ hs }}" fill="{{ sheet }}"/><g class="zrays" style="{{ origin }}" fill="{{ rays }}">
+{% for w in wedges %}<polygon points="{{ w }}"/>{% endfor %}
+</g><circle cx="{{ disc.0 }}" cy="{{ disc.1 }}" r="{{ disc.2 }}" fill="url(#zht)"/>
+<polygon points="{{ mask_l }}" fill="{{ sheet }}"/><polygon points="{{ mask_r }}" fill="{{ sheet }}"/>
+<polygon points="{{ wall_l }}" fill="{{ sheet }}"/><clipPath id="zhw"><polygon points="{{ wall_l }}"/></clipPath><g clip-path="url(#zhw)" stroke="{{ spot }}" stroke-width="{{ hatch_w }}"><path d="{{ hatch }}"/></g>
+<polygon points="{{ wall_r }}" fill="{{ sheet }}"/>
+<polygon points="{{ floor }}" fill="{{ sheet }}"/><polygon points="{{ floor }}" fill="url(#zht)" opacity=".6"/>
+{% for r in ribs %}<polyline points="{{ r.points }}" fill="none" stroke="{{ paper }}" stroke-width="{{ r.width }}" stroke-opacity=".75"/>{% endfor %}
+<polyline points="{{ near_u }}" fill="none" stroke="{{ paper }}" stroke-width="{{ near_w }}"/><polyline points="{{ far_u }}" fill="none" stroke="{{ paper }}" stroke-width="{{ far_w }}"/>
+{% for l in joins %}<line x1="{{ l.0 }}" y1="{{ l.1 }}" x2="{{ l.2 }}" y2="{{ l.3 }}" stroke="{{ paper }}" stroke-width="{{ join_w }}"/>{% endfor %}
+{% for l in decks %}<line x1="{{ l.0 }}" y1="{{ l.1 }}" x2="{{ l.2 }}" y2="{{ l.3 }}" stroke="{{ paper }}" stroke-width="{{ deck_w }}"/>{% endfor %}

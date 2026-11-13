@@ -31,6 +31,7 @@ message Background {
     Trihex trihex = 1;
     Summit summit = 2;
     Treeline treeline = 3;
+    Halfpipe halfpipe = 4;
   }
 }
 // motion and image are independent; CLOSEOPEN + NONE is rejected in validate().
@@ -43,6 +44,7 @@ message Trihex {
 enum Snow { FLURRY = 0; NO_SNOW = 1; BLIZZARD = 2; }  // zero = the approved look
 message Summit { Snow snow = 1; }
 message Treeline { Snow snow = 1; }
+message Halfpipe { Snow snow = 1; }
 
 message Icon {
   oneof glyph {

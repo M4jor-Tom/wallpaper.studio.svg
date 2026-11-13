@@ -19,7 +19,9 @@ fn every_valid_config_dispatches_correctly() {
         let has = |axis: &str, item: &str| cfg[axis].get(item).is_some();
         assert_eq!(
             scene.uses(Mood::Zine),
-            has("background", "summit") || has("background", "treeline"),
+            has("background", "summit")
+                || has("background", "treeline")
+                || has("background", "halfpipe"),
             "{text}"
         );
         assert_eq!(
@@ -87,7 +89,7 @@ fn every_valid_config_dispatches_correctly() {
         );
         n += 1;
     }
-    assert_eq!(n, 58);
+    assert_eq!(n, 65);
 }
 
 #[test]

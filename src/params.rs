@@ -37,6 +37,9 @@ pub enum Ground {
     Treeline {
         snow: Snow,
     },
+    Halfpipe {
+        snow: Snow,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,7 +64,7 @@ impl Scene {
     pub fn uses(&self, mood: Mood) -> bool {
         let ground = match self.ground {
             Ground::Trihex { .. } => Mood::Blueprint,
-            Ground::Summit { .. } | Ground::Treeline { .. } => Mood::Zine,
+            Ground::Summit { .. } | Ground::Treeline { .. } | Ground::Halfpipe { .. } => Mood::Zine,
         };
         let glyph = match self.glyph {
             Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
@@ -96,11 +99,11 @@ impl Scene {
                 };
                 format!("{motion}-{fg}-{icon}-{image}-{overlay}")
             }
-            Ground::Summit { snow } | Ground::Treeline { snow } => {
-                let name = if matches!(self.ground, Ground::Summit { .. }) {
-                    "summit"
-                } else {
-                    "treeline"
+            Ground::Summit { snow } | Ground::Treeline { snow } | Ground::Halfpipe { snow } => {
+                let name = match self.ground {
+                    Ground::Summit { .. } => "summit",
+                    Ground::Treeline { .. } => "treeline",
+                    _ => "halfpipe",
                 };
                 let snow = match snow {
                     Snow::Flurry => "flurry",
@@ -123,6 +126,7 @@ fn ground_of(p: &Parameters) -> Ground {
         Some(background::Ground::Trihex(t)) => trihex(t),
         Some(background::Ground::Summit(s)) => Ground::Summit { snow: s.snow() },
         Some(background::Ground::Treeline(t)) => Ground::Treeline { snow: t.snow() },
+        Some(background::Ground::Halfpipe(h)) => Ground::Halfpipe { snow: h.snow() },
         None => trihex(&Trihex::default()),
     }
 }
@@ -277,6 +281,7 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
     }
     grounds.push(json!({"summit": {}}));
     grounds.push(json!({"treeline": {}}));
+    grounds.push(json!({"halfpipe": {}}));
 
     let scene = |background, icon, overlay| json!({"seed": seed, "background": background, "icon": icon, "overlay": overlay});
     let mut out = Vec::new();
@@ -306,6 +311,11 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
     }
     out.push(scene(
         json!({"treeline": {"snow": "BLIZZARD"}}),
+        hexatri(),
+        json!({}),
+    ));
+    out.push(scene(
+        json!({"halfpipe": {"snow": "BLIZZARD"}}),
         hexatri(),
         json!({}),
     ));
@@ -471,7 +481,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 58);
+        assert_eq!(cfgs.len(), 65);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#
