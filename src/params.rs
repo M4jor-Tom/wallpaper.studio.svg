@@ -11,8 +11,9 @@ pub const DESCRIPTOR: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/descript
 
 use crate::Error;
 use crate::blueprint::style::MATRIX_COLOR;
-use crate::color::hex_rgba;
+use crate::color::{hex_rgb, hex_rgba};
 use crate::mood::Mood;
+use crate::zine::style::SPOT;
 
 pub fn parse(text: &str) -> Result<Parameters, serde_json::Error> {
     serde_json::from_str(text)
@@ -30,6 +31,9 @@ pub enum Ground {
         motion: trihex::Motion,
         image: trihex::Image,
     },
+    Summit {
+        snow: Snow,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -44,58 +48,81 @@ pub struct Scene {
     pub ground: Ground,
     pub glyph: Glyph,
     pub overlay: Option<Rain>,
+    /// lowercase `#rrggbb`: the one ink every zine item prints in
+    pub spot: String,
 }
 
 impl Scene {
-    /// True when the ground, the glyph or the overlay belongs to `mood`.
+    /// True when the ground, the glyph or the overlay belongs to `mood`, i.e. the page needs that
+    /// mood's defs and CSS. Distinct from `mood::MOODS`, which says which moods an item is offered in.
     pub fn uses(&self, mood: Mood) -> bool {
         let ground = match self.ground {
             Ground::Trihex { .. } => Mood::Blueprint,
+            Ground::Summit { .. } => Mood::Zine,
         };
         let glyph = match self.glyph {
             Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
         };
-        // matrix is the only overlay
-        let overlay = self.overlay.as_ref().map(|_| Mood::Blueprint);
+        let overlay = self.overlay.as_ref().map(|Rain { .. }| Mood::Blueprint);
         [Some(ground), Some(glyph), overlay].contains(&Some(mood))
     }
 
-    /// Legacy lowercase vocabulary: it names the output files (STARFIELD is `space`).
+    /// Lowercase vocabulary that names the output files. Trihex keeps its legacy one (STARFIELD is `space`).
     pub fn slug(&self) -> String {
-        let Ground::Trihex { motion, image } = self.ground;
-        let motion = match motion {
-            trihex::Motion::Static => "static",
-            trihex::Motion::Scan => "scan",
-            trihex::Motion::Lights => "lights",
-            trihex::Motion::Closeopen => "closeopen",
-        };
         let (fg, icon) = match self.glyph {
             Glyph::Hexatri { rotate: true } => ("rotate", "hexatri"),
             Glyph::Hexatri { rotate: false } => ("static", "hexatri"),
             Glyph::Ship => ("static", "ship"),
-        };
-        let image = match image {
-            trihex::Image::None => "none",
-            trihex::Image::Starfield => "space",
         };
         let overlay = if self.overlay.is_some() {
             "matrix"
         } else {
             "none"
         };
-        format!("{motion}-{fg}-{icon}-{image}-{overlay}")
+        match self.ground {
+            Ground::Trihex { motion, image } => {
+                let motion = match motion {
+                    trihex::Motion::Static => "static",
+                    trihex::Motion::Scan => "scan",
+                    trihex::Motion::Lights => "lights",
+                    trihex::Motion::Closeopen => "closeopen",
+                };
+                let image = match image {
+                    trihex::Image::None => "none",
+                    trihex::Image::Starfield => "space",
+                };
+                format!("{motion}-{fg}-{icon}-{image}-{overlay}")
+            }
+            Ground::Summit { snow } => {
+                let snow = match snow {
+                    Snow::Flurry => "flurry",
+                    Snow::NoSnow => "nosnow",
+                    Snow::Blizzard => "blizzard",
+                };
+                format!("summit-{snow}-{fg}-{icon}-{overlay}")
+            }
+        }
     }
 }
 
-fn trihex_of(p: &Parameters) -> Trihex {
+/// An unset ground is trihex at its defaults. Reads no string, so `validate` can call it too.
+fn ground_of(p: &Parameters) -> Ground {
+    let trihex = |t: &Trihex| Ground::Trihex {
+        motion: t.motion(),
+        image: t.image(),
+    };
     match p.background.as_ref().and_then(|b| b.ground.as_ref()) {
-        Some(background::Ground::Trihex(t)) => *t,
-        None => Trihex::default(),
+        Some(background::Ground::Trihex(t)) => trihex(t),
+        Some(background::Ground::Summit(s)) => Ground::Summit { snow: s.snow() },
+        None => trihex(&Trihex::default()),
     }
+}
+
+fn spot_of(p: &Parameters) -> &str {
+    p.zine.as_ref().map_or("", |z| z.spot.as_str())
 }
 
 pub fn resolve(p: &Parameters) -> Scene {
-    let bg = trihex_of(p);
     let glyph = match p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
         Some(icon::Glyph::Ship(_)) => Glyph::Ship,
         Some(icon::Glyph::Hexatri(h)) => Glyph::Hexatri {
@@ -115,21 +142,27 @@ pub fn resolve(p: &Parameters) -> Scene {
                     m.color.clone()
                 },
             });
+    let spot = match spot_of(p) {
+        "" => SPOT.to_string(),
+        s => hex_rgb(s).expect("validate() already accepted zine.spot"),
+    };
     Scene {
         seed: p.seed,
-        ground: Ground::Trihex {
-            motion: bg.motion(),
-            image: bg.image(),
-        },
+        ground: ground_of(p),
         glyph,
         overlay,
+        spot,
     }
 }
 
 /// The rules parameters.proto cannot state. Prefer moving a field over adding a check here.
 pub fn validate(p: &Parameters) -> Result<(), Error> {
-    let bg = trihex_of(p);
-    if bg.motion() == trihex::Motion::Closeopen && bg.image() == trihex::Image::None {
+    if ground_of(p)
+        == (Ground::Trihex {
+            motion: trihex::Motion::Closeopen,
+            image: trihex::Image::None,
+        })
+    {
         return Err(Error::Invalid(
             "background.trihex.motion CLOSEOPEN has nothing to reveal with background.trihex.image NONE \
              (its hexagons open onto an image); set image STARFIELD, or motion LIGHTS"
@@ -150,6 +183,11 @@ pub fn validate(p: &Parameters) -> Result<(), Error> {
             &m.color
         };
         hex_rgba(color).map_err(|e| Error::Invalid(format!("overlay.matrix.color: {e}")))?;
+    }
+    // checked whatever the scene: a zine block with no zine item is inert, not invalid
+    let spot = spot_of(p);
+    if !spot.is_empty() {
+        hex_rgb(spot).map_err(|e| Error::Invalid(format!("zine.spot: {e}")))?;
     }
 
     let check = |s: &str, field: &str| -> Result<(), Error> {
@@ -210,36 +248,55 @@ pub fn parse_res(s: &str) -> Result<(u32, u32), Error> {
     Ok((w, h))
 }
 
-/// Every config the schema expresses and `validate` keeps; both test sweeps enumerate from here.
+/// One config for every distinct picture `validate` allows; both test sweeps enumerate from here.
+/// A setting with no visible effect (a zine block on a blueprint page) is valid but never listed:
+/// the corpus rejects two configs that render the same SVG.
 /// Matrix angle and colour are non-default on purpose: defaults would skip the code they pin.
 pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
     use serde_json::json;
-    let mut out = Vec::new();
+    let mut grounds = Vec::new();
     // Dense enums: walking until try_from fails is declaration order.
     for motion in (0..).map_while(|i| trihex::Motion::try_from(i).ok()) {
         for image in (0..).map_while(|i| trihex::Image::try_from(i).ok()) {
             if motion == trihex::Motion::Closeopen && image == trihex::Image::None {
                 continue; // rejected by validate(), though renderable
             }
-            for glyph in [
-                json!({"hexatri": {"motion": "ROTATE"}}),
-                json!({"hexatri": {"motion": "STATIC"}}),
-                json!({"ship": {}}),
+            grounds.push(
+                json!({"trihex": {"motion": motion.as_str_name(), "image": image.as_str_name()}}),
+            );
+        }
+    }
+    grounds.push(json!({"summit": {}}));
+
+    let scene = |background, icon, overlay| json!({"seed": seed, "background": background, "icon": icon, "overlay": overlay});
+    let mut out = Vec::new();
+    for background in &grounds {
+        for icon in [
+            json!({"hexatri": {"motion": "ROTATE"}}),
+            json!({"hexatri": {"motion": "STATIC"}}),
+            json!({"ship": {}}),
+        ] {
+            for overlay in [
+                json!({}),
+                json!({"matrix": {"angle": 250, "color": "#395e53cc"}}),
             ] {
-                for overlay in [
-                    json!({}),
-                    json!({"matrix": {"angle": 250, "color": "#395e53cc"}}),
-                ] {
-                    out.push(json!({
-                        "seed": seed,
-                        "background": {"trihex": {"motion": motion.as_str_name(), "image": image.as_str_name()}},
-                        "icon": glyph,
-                        "overlay": overlay,
-                    }));
-                }
+                out.push(scene(background.clone(), icon.clone(), overlay));
             }
         }
     }
+    // Each summit setting once, on the default icon: crossing it with
+    // every icon and overlay would add renders, not code paths.
+    let hexatri = || json!({"hexatri": {"motion": "ROTATE"}});
+    for snow in ["NO_SNOW", "BLIZZARD"] {
+        out.push(scene(
+            json!({"summit": {"snow": snow}}),
+            hexatri(),
+            json!({}),
+        ));
+    }
+    let mut spot = scene(json!({"summit": {}}), hexatri(), json!({}));
+    spot["zine"] = json!({"spot": "#22c8e5"});
+    out.push(spot);
     out
 }
 
@@ -265,16 +322,24 @@ mod tests {
     fn an_empty_config_is_a_complete_config() {
         let p = parse("{}").expect("{} must parse");
         assert_eq!(p.seed, 0);
-        assert_eq!(trihex_of(&p).motion(), trihex::Motion::Static);
+        assert!(matches!(
+            ground_of(&p),
+            Ground::Trihex {
+                motion: trihex::Motion::Static,
+                ..
+            }
+        ));
         assert!(p.icon.is_none());
-        assert_eq!(
-            trihex_of(
+        assert!(matches!(
+            ground_of(
                 &parse(r#"{"background":{"trihex":{"motion":"CLOSEOPEN","image":"STARFIELD"}}}"#)
                     .unwrap()
-            )
-            .motion(),
-            trihex::Motion::Closeopen
-        );
+            ),
+            Ground::Trihex {
+                motion: trihex::Motion::Closeopen,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -343,6 +408,42 @@ mod tests {
     }
 
     #[test]
+    fn spot_is_validated_and_normalised() {
+        let e = validate(&parse(r##"{"zine":{"spot":"#e6394680"}}"##).unwrap())
+            .unwrap_err()
+            .to_string();
+        assert!(e.contains("zine.spot") && e.contains("no alpha"), "{e}");
+        assert!(validate(&parse(r#"{"zine":{"spot":"red"}}"#).unwrap()).is_err());
+        assert_eq!(
+            resolve(&parse(r##"{"zine":{"spot":" #22C8E5 "}}"##).unwrap()).spot,
+            "#22c8e5"
+        );
+        assert_eq!(resolve(&parse("{}").unwrap()).spot, "#e63946");
+    }
+
+    #[test]
+    fn an_inert_zine_block_is_accepted() {
+        assert!(validate(&parse(r##"{"zine":{"spot":"#22c8e5"}}"##).unwrap()).is_ok());
+    }
+
+    #[test]
+    fn a_summit_config_resolves_to_a_zine_scene() {
+        let s = resolve(
+            &parse(r#"{"background":{"summit":{"snow":"BLIZZARD"}},"icon":{"ship":{}}}"#).unwrap(),
+        );
+        assert_eq!(
+            s.ground,
+            Ground::Summit {
+                snow: Snow::Blizzard
+            }
+        );
+        assert!(s.uses(Mood::Zine) && s.uses(Mood::Blueprint));
+        assert_eq!(s.slug(), "summit-blizzard-static-ship-none");
+        let s = resolve(&parse(r#"{"background":{"summit":{}}}"#).unwrap());
+        assert_eq!(s.slug(), "summit-flurry-rotate-hexatri-none");
+    }
+
+    #[test]
     fn parse_res_takes_presets_and_dimensions() {
         assert_eq!(parse_res("").unwrap(), (1920, 1080));
         assert_eq!(parse_res("4K").unwrap(), (3840, 2160));
@@ -355,7 +456,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 42);
+        assert_eq!(cfgs.len(), 51);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#

@@ -23,7 +23,9 @@ impl Mood {
 
 pub const MOODS: &[(&str, &[Mood])] = &[
     ("background.trihex", &[Mood::Blueprint]),
+    ("background.summit", &[Mood::Zine]),
     ("icon.hexatri", &[Mood::Blueprint]),
     ("icon.ship", &[Mood::Blueprint]),
     ("overlay.matrix", &[Mood::Blueprint]),
+    ("zine", &[Mood::Zine]), // the mood-wide settings block
 ];

@@ -338,6 +338,7 @@ mod tests {
             },
             glyph: Glyph::Hexatri { rotate: true },
             overlay: None,
+            spot: crate::zine::style::SPOT.to_string(),
         }
     }
 

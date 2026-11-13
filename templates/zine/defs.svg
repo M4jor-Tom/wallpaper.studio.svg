@@ -1,0 +1,1 @@
+<pattern id="zht" width="{{ period }}" height="{{ period }}" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="{{ c }}" cy="{{ c }}" r="{{ r }}" fill="{{ spot }}"/></pattern>

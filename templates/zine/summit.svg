@@ -1,0 +1,9 @@
+{% macro peak(p) %}<polygon points="{{ p.tri }}" fill="{{ sheet }}"/><polyline points="{{ p.tri }}" fill="none" stroke="{{ paper }}" stroke-width="{{ line_w }}" stroke-linejoin="round"/><clipPath id="{{ p.id }}"><polygon points="{{ p.face }}"/></clipPath><g clip-path="url(#{{ p.id }})" stroke="{{ spot }}" stroke-width="{{ hatch_w }}">
+{% for l in p.hatch %}<line x1="{{ l.0 }}" y1="{{ l.1 }}" x2="{{ l.2 }}" y2="{{ l.3 }}"/>{% endfor %}
+</g><polygon points="{{ p.cap }}" fill="{{ paper }}"/>{% endmacro %}
+<rect width="{{ ws }}" height="{{ hs }}" fill="{{ sheet }}"/><g class="zrays" style="{{ origin }}" fill="{{ rays }}">
+{% for w in wedges %}<polygon points="{{ w }}"/>{% endfor %}
+</g><circle cx="{{ disc.0 }}" cy="{{ disc.1 }}" r="{{ disc.2 }}" fill="url(#zht)"/>
+{% for p in back %}{% call peak(p) %}{% endcall %}{% endfor %}
+<rect y="{{ band_y }}" width="{{ ws }}" height="{{ band_h }}" fill="{{ sheet }}"/>
+{% for p in front %}{% call peak(p) %}{% endcall %}{% endfor %}

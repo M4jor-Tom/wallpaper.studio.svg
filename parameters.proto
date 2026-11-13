@@ -8,7 +8,10 @@ message Parameters {
   Background background = 3;  // unset -> plain lattice, no animation
   Icon       icon       = 4;  // unset -> hexatri, rotating
   Overlay    overlay    = 5;  // unset -> nothing above the lattice
+  Zine       zine       = 6;  // read by every zine item in the scene; inert without one
 }
+
+message Zine { string spot = 1; }  // #rrggbb, no alpha (a print ink); empty = #e63946
 
 message Output {
   oneof sink {
@@ -24,7 +27,10 @@ message Directory { string path = 1; repeated string resolutions = 2; }
 // or WIDTHxHEIGHT. Empty = 1080p.
 
 message Background {
-  oneof ground { Trihex trihex = 1; }  // unset -> trihex defaults
+  oneof ground {  // unset -> trihex defaults
+    Trihex trihex = 1;
+    Summit summit = 2;
+  }
 }
 // motion and image are independent; CLOSEOPEN + NONE is rejected in validate().
 message Trihex {
@@ -33,6 +39,8 @@ message Trihex {
   Motion motion = 1;
   Image  image  = 2;
 }
+enum Snow { FLURRY = 0; NO_SNOW = 1; BLIZZARD = 2; }  // zero = the approved look
+message Summit { Snow snow = 1; }
 
 message Icon {
   oneof glyph {

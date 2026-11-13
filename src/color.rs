@@ -31,6 +31,15 @@ pub fn hex_rgba(s: &str) -> Result<(String, f64), String> {
     Ok((format!("#{}", rgb.to_lowercase()), alpha as f64 / 255.0))
 }
 
+/// `#rrggbb` only, lowercased: a print ink has no alpha.
+pub fn hex_rgb(s: &str) -> Result<String, String> {
+    hex_rgba(s)
+        .ok()
+        .filter(|_| s.trim().len() == 7)
+        .map(|(rgb, _)| rgb)
+        .ok_or_else(|| format!("bad colour '{s}': use #rrggbb (print inks take no alpha)"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

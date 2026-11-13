@@ -111,6 +111,7 @@ mod tests {
             },
             glyph: Glyph::Hexatri { rotate: true },
             overlay,
+            spot: crate::zine::style::SPOT.to_string(),
         }
     }
 
@@ -248,6 +249,7 @@ mod tests {
                         angle: 0.0,
                         color: "#8899aa80".to_string(),
                     }),
+                    spot: crate::zine::style::SPOT.to_string(),
                 },
             );
             assert!(
