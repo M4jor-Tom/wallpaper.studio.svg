@@ -92,8 +92,7 @@ nix run .#bgsvg                           # the schema's defaults
 nix run .#bgsvg -- path/to/config.json
 nix run .#bgsvg -- --configs              # dump the 42-config corpus as JSON lines
 nix run .#bgsvg -- --descriptor           # parameters.proto as a FileDescriptorSet, for other languages
-nix build .#bgsvg-wasm                    # the browser-callable module (web/ and nodejs/)
-nix develop -c cargo test --workspace     # every check
+nix develop -c cargo test                 # every check
 ```
 
 Without Nix: Rust 1.85+ (edition 2024) and `protoc` on `PATH`, then
@@ -142,16 +141,7 @@ writing four sizes to a single file is not expressible. `CLOSEOPEN` with
 One command runs every check; everything lives under `tests/`.
 
 ```sh
-nix build .#bgsvg-wasm
-BGSVG_WASM=$PWD/result/nodejs nix develop -c cargo test --workspace
-```
-
-`BGSVG_WASM` is what turns the wasm sweep on. Without it that one test prints
-`SKIPPED` and passes — the module comes from a separate derivation, so the
-alternative would be failing every plain `cargo test` — and the rest still runs:
-
-```sh
-nix develop -c cargo test --workspace   # everything except the wasm sweep
+nix develop -c cargo test
 ```
 
 Builds all 42 valid `background.motion` × `background.image` × `icon` ×
@@ -167,8 +157,7 @@ an out-of-range matrix angle, a malformed colour, a malformed resolution,
 malformed JSON, and a missing config file.
 
 `tests/configs.rs` says the right code ran and the invariants hold; `tests/golden.rs`
-says the picture is unchanged and well-formed; and `tests/wasm.rs` (below) says the
-wasm build lands on those same bytes. `tests/golden/` holds those same 42
+says the picture is unchanged and well-formed. `tests/golden/` holds those same 42
 configs, each kept beside the SVG it renders:
 
 ```
@@ -206,14 +195,3 @@ with several SVGs, which this layout cannot name, so the corpus holds
 single-render configs only. Two configs in one directory would mean they render
 byte-identical SVGs — an axis that stopped changing the picture — and `scan()`
 reports it.
-
-`tests/wasm.mjs` sweeps the same corpus through the browser-callable build and
-compares bytes, so a wasm build that renders nearly the same picture still
-fails. `tests/wasm.rs` is what `cargo test` runs it from; the sweep stays
-JavaScript because `wasm-bindgen`'s glue is JavaScript, and it is the only
-non-Rust code in the tree. Run it on its own with:
-
-```sh
-nix build .#bgsvg-wasm
-BGSVG_WASM=$PWD/result/nodejs nix develop -c node tests/wasm.mjs
-```

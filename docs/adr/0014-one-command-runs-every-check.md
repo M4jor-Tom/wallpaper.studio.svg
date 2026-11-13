@@ -3,7 +3,7 @@
 | Field    | Value                          |
 |----------|--------------------------------|
 | Date     | 2026-08-25                     |
-| Status   | Accepted; supersedes the packaging half of [[0013]] |
+| Status   | Accepted; supersedes the packaging half of [[0013]]; its wasm sweep removed by [[0015]] |
 | Deciders | theta                          |
 | Branch   | `master`                       |
 | Commit   | pending                        |

@@ -1,6 +1,3 @@
-[workspace]
-members = ["crates/bgsvg-wasm"]
-
 [package]
 name = "bgsvg"
 version = "0.1.0"

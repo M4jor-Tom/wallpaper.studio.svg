@@ -3,7 +3,7 @@
 | Field    | Value                          |
 |----------|--------------------------------|
 | Date     | 2026-08-21                     |
-| Status   | Accepted                       |
+| Status   | Superseded by [[0015]]         |
 | Deciders | theta                          |
 | Branch   | `master`                       |
 | Commit   | `d510469..5644c3f`             |

@@ -7,6 +7,7 @@
 - [x] WASM target — [spec](superpowers/specs/2026-08-21-wasm-target-design.md) · [plan](superpowers/plans/2026-08-21-wasm-target.md) · ADR [0011](adr/0011-render-in-the-browser-via-wasm.md) [0012](adr/0012-keep-the-wasm-binding-in-this-repository.md)
 - [x] Python out of the toolchain — ADR [0013](adr/0013-run-the-golden-corpus-from-rust.md)
 - [x] One command runs every check — ADR [0014](adr/0014-one-command-runs-every-check.md)
+- [x] WASM target dropped; the UI links the crate — ADR [0015](adr/0015-drop-the-wasm-target.md)
 
 # Planned
 
@@ -17,4 +18,5 @@
 ADRs are numbered in decision order, so `docs/adr/` reads chronologically:
 config schema, then the corpus, then the Rust port, then the template split,
 then the WASM target, then the last of the Python leaving and the checks
-collapsing into one command.
+collapsing into one command, then the WASM target leaving once the UI linked
+the crate directly.

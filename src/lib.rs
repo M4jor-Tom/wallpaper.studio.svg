@@ -49,7 +49,7 @@ pub fn load(json: &str) -> Result<(params::Parameters, params::Scene), Error> {
     Ok((p, scene))
 }
 
-/// Rejects zero sizes here, the one place every caller funnels through: `Lattice::new` would divide by zero.
+/// Rejects zero sizes, which `Lattice::new` would divide by; the CLI path gets the same check from `parse_res`.
 pub fn render_to_string(json: &str, w: u32, h: u32) -> Result<String, Error> {
     if w == 0 || h == 0 {
         return Err(Error::Invalid("width and height must be non-zero".into()));
