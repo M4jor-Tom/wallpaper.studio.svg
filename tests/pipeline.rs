@@ -13,7 +13,7 @@ fn render_to_string_is_the_pipeline_the_cli_runs() {
 #[test]
 fn render_to_string_validates_before_it_renders() {
     let e = render_to_string(
-        r#"{"background":{"motion":"CLOSEOPEN","image":"NONE"}}"#,
+        r#"{"background":{"trihex":{"motion":"CLOSEOPEN","image":"NONE"}}}"#,
         640,
         360,
     )

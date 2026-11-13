@@ -1,3 +1,3 @@
 {"output": {"file": {"path": "docs/moods/blueprint/samples/static-hexatri.svg", "resolution": "1280x720"}},
- "background": {"motion": "STATIC"},
+ "background": {"trihex":{"motion": "STATIC"}},
  "icon": {"hexatri": {}}}

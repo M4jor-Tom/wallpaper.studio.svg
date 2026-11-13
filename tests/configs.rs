@@ -25,12 +25,12 @@ fn every_valid_config_dispatches_correctly() {
         );
         assert_eq!(
             svg.contains("<clipPath"),
-            scene.image == bgsvg::params::background::Image::Starfield,
+            scene.image == bgsvg::params::trihex::Image::Starfield,
             "bg-image dispatch is wrong: {text}"
         );
         assert_eq!(
             svg.contains(r#"class="blind""#),
-            scene.motion == bgsvg::params::background::Motion::Closeopen,
+            scene.motion == bgsvg::params::trihex::Motion::Closeopen,
             "blinds must exist exactly when closeopen has windows to cover: {text}"
         );
         assert_eq!(
@@ -51,7 +51,7 @@ fn an_empty_config_renders_the_defaults() {
         360,
         &resolve(
             &parse(
-                r#"{"seed":0,"background":{"motion":"STATIC","image":"NONE"},"icon":{"hexatri":{"motion":"ROTATE"}}}"#,
+                r#"{"seed":0,"background":{"trihex":{"motion":"STATIC","image":"NONE"}},"icon":{"hexatri":{"motion":"ROTATE"}}}"#,
             )
             .unwrap(),
         ),

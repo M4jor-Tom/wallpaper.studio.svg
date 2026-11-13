@@ -34,7 +34,7 @@ fn every_bad_config_exits_two() {
         "a typo'd key must be rejected, not silently ignored",
     );
     rejected(
-        Some(r#"{"background":{"motion":"CLOSEOPEN","image":"NONE"}}"#),
+        Some(r#"{"background":{"trihex":{"motion":"CLOSEOPEN","image":"NONE"}}}"#),
         "closeopen without an image must be rejected",
     );
     rejected(

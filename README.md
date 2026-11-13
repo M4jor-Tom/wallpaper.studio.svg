@@ -11,10 +11,10 @@ documented in [`docs/moods/blueprint/`](docs/moods/blueprint/).
 
 ## Animations
 
-- `background.motion STATIC` — no background animation.
-- `background.motion SCAN` — hexagon (and triangle) opacities sweep diagonally across the canvas.
-- `background.motion LIGHTS` — hexagons occasionally light their **border**, then their **fill**, then fade back; random per-hexagon timing, so only a few glow at once.
-- `background.motion CLOSEOPEN` — **every** hexagon becomes a window, each covered by a **blind** that shrinks about its own centre, so the picture behind it appears as a ring widening from the border inward, holds open, then grows shut again. Closing is opening played backwards. Blinds stay shut 86% of a 60–90 s cycle with a random phase per cell, so at 1080p roughly 11 of the 76 windows show anything at a given moment and only ~3 are fully open — the field stays sparse in **time** rather than in space, and a window can open anywhere. Needs `background.image STARFIELD` to open onto.
+- `background.trihex.motion STATIC` — no background animation.
+- `background.trihex.motion SCAN` — hexagon (and triangle) opacities sweep diagonally across the canvas.
+- `background.trihex.motion LIGHTS` — hexagons occasionally light their **border**, then their **fill**, then fade back; random per-hexagon timing, so only a few glow at once.
+- `background.trihex.motion CLOSEOPEN` — **every** hexagon becomes a window, each covered by a **blind** that shrinks about its own centre, so the picture behind it appears as a ring widening from the border inward, holds open, then grows shut again. Closing is opening played backwards. Blinds stay shut 86% of a 60–90 s cycle with a random phase per cell, so at 1080p roughly 11 of the 76 windows show anything at a given moment and only ~3 are fully open — the field stays sparse in **time** rather than in space, and a window can open anywhere. Needs `background.trihex.image STARFIELD` to open onto.
 - `icon.hexatri.motion ROTATE` — the icon's two triangle rings counter-rotate inside the static hex frame.
 - `icon.hexatri.motion STATIC` — still icon.
 
@@ -36,13 +36,13 @@ rotate-ship.json: unknown field `motion`, there are no fields at line 1 column 2
 
 ## Background images
 
-- `background.image NONE` — plain lattice.
-- `background.image STARFIELD` — ~8% of hexagons become windows onto a **procedurally drawn starfield**: void ground, a faint nebula, and seeded stars. Drawn rather than embedded, so there are no assets and output stays small and crisp at any resolution (a 4k frame is ~48 KB).
+- `background.trihex.image NONE` — plain lattice.
+- `background.trihex.image STARFIELD` — ~8% of hexagons become windows onto a **procedurally drawn starfield**: void ground, a faint nebula, and seeded stars. Drawn rather than embedded, so there are no assets and output stays small and crisp at any resolution (a 4k frame is ~48 KB).
 
-Space cells always clear the icon zone, and under `background.motion LIGHTS` they pulse their
+Space cells always clear the icon zone, and under `background.trihex.motion LIGHTS` they pulse their
 border only — the usual fill flash would wash the stars out.
 
-`background.motion CLOSEOPEN` is the exception to the ~8%: it needs a window everywhere, so it
+`background.trihex.motion CLOSEOPEN` is the exception to the ~8%: it needs a window everywhere, so it
 draws a starfield in **every** eligible hexagon and lets the blinds do the
 rationing. That is ~76 starfields instead of ~7, which costs file size — a 4k
 frame goes from ~48 KB to ~222 KB (~35 KB gzipped). Their borders also stay at
@@ -56,18 +56,18 @@ which measured **+22% frame rate, 5–10× fewer dropped frames and ~110 MiB les
 renderer memory** at 1080p. Both keyframe spans are derived from one constant, so
 a window cannot fall out of step with its blind.
 
-`background.motion CLOSEOPEN` needs something to reveal, so it is rejected with
-`background.image NONE` rather than rendering nothing — the one rule
+`background.trihex.motion CLOSEOPEN` needs something to reveal, so it is rejected with
+`background.trihex.image NONE` rather than rendering nothing — the one rule
 `parameters.proto` cannot express, checked in `validate()`:
 
 ```sh
 $ bgsvg closeopen-none.json
-closeopen-none.json: background motion CLOSEOPEN has nothing to reveal with
-image NONE (its hexagons open onto an image); set image STARFIELD, or motion
+closeopen-none.json: background.trihex.motion CLOSEOPEN has nothing to reveal with
+background.trihex.image NONE (its hexagons open onto an image); set image STARFIELD, or motion
 LIGHTS
 ```
 
-`background.motion` and `background.image` are independent and combine freely
+`background.trihex.motion` and `background.trihex.image` are independent and combine freely
 apart from that one exception. A motion belongs to the icon that declares it
 (only `hexatri` has one), so a rotating ship is unwritable rather than a
 runtime rejection. Everything except the animations depends only on `seed`, so
@@ -107,7 +107,7 @@ so `{}` is a complete config.
 {
   "seed": 0,
   "output": { "directory": { "path": "out", "resolutions": ["1080p", "4k"] } },
-  "background": { "motion": "CLOSEOPEN", "image": "STARFIELD" },
+  "background": {"trihex":{ "motion": "CLOSEOPEN", "image": "STARFIELD" }},
   "icon": { "hexatri": { "motion": "ROTATE" } },
   "overlay": { "matrix": { "angle": 250, "color": "#395e53cc" } }
 }
@@ -119,8 +119,8 @@ so `{}` is a complete config.
 | `output.file` | — | `{ path, resolution }` — one `.svg` |
 | `output.stdout` | — | `{ resolution }` — write to stdout |
 | `output.directory` | `{ "path": "out", "resolutions": ["1080p"] }` | one file per resolution |
-| `background.motion` | `STATIC` | `STATIC` `SCAN` `LIGHTS` `CLOSEOPEN` (`CLOSEOPEN` needs an image) |
-| `background.image` | `NONE` | `NONE` `STARFIELD` |
+| `background.trihex.motion` | `STATIC` | `STATIC` `SCAN` `LIGHTS` `CLOSEOPEN` (`CLOSEOPEN` needs an image) |
+| `background.trihex.image` | `NONE` | `NONE` `STARFIELD` |
 | `icon.hexatri.motion` | `ROTATE` | `ROTATE` `STATIC` |
 | `icon.ship` | — | no motion: the ship is static by design |
 | `overlay.matrix` | absent | `{ angle, color }` — `0`–`360`, `#rrggbb` or `#rrggbbaa` |
@@ -143,7 +143,7 @@ One command runs every check; everything lives under `tests/`.
 nix develop -c cargo test
 ```
 
-Builds all 42 valid `background.motion` × `background.image` × `icon` ×
+Builds all 42 valid `background.trihex.motion` × `background.trihex.image` × `icon` ×
 `overlay` combinations and asserts the invariants:
 holder/intersector roles, the clear center, space-cell clearance and their
 opt-out of the fill flash, one blind per window layered *under* the
@@ -151,7 +151,7 @@ triangles, every window sharing its own blind's phase, blinds and windows
 resting open so `prefers-reduced-motion` still shows the starfield, and that
 an empty config renders the old defaults. It also asserts that the schema or
 `validate()` rejects a ship with a motion, a stray matrix knob, two output
-sinks at once, a typo'd key, `background.motion CLOSEOPEN` without an image,
+sinks at once, a typo'd key, `background.trihex.motion CLOSEOPEN` without an image,
 an out-of-range matrix angle, a malformed colour, a malformed resolution,
 malformed JSON, and a missing config file.
 

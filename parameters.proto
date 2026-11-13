@@ -23,8 +23,11 @@ message Directory { string path = 1; repeated string resolutions = 2; }
 // resolution: a preset (720p 1080p 1440p 4k mobile tablet square ultrawide)
 // or WIDTHxHEIGHT. Empty = 1080p.
 
-// motion and image are independent; CLOSEOPEN + NONE is rejected in validate().
 message Background {
+  oneof ground { Trihex trihex = 1; }  // unset -> trihex defaults
+}
+// motion and image are independent; CLOSEOPEN + NONE is rejected in validate().
+message Trihex {
   enum Motion { STATIC = 0; SCAN = 1; LIGHTS = 2; CLOSEOPEN = 3; }
   enum Image  { NONE = 0; STARFIELD = 1; }
   Motion motion = 1;

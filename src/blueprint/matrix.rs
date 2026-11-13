@@ -99,14 +99,14 @@ pub fn pat_matrix(w: u32, h: u32, lat: &Lattice, seed: u32, angle: f64, color: &
 mod tests {
     use crate::blueprint::style::{MATRIX_COLOR, MATRIX_GLYPHS};
     use crate::geom::fmt;
-    use crate::params::{Glyph, Rain, Scene, background};
+    use crate::params::{Glyph, Rain, Scene, trihex};
     use crate::svg::build_svg;
 
     fn scene(overlay: Option<Rain>) -> Scene {
         Scene {
             seed: 3,
-            motion: background::Motion::Lights,
-            image: background::Image::Starfield,
+            motion: trihex::Motion::Lights,
+            image: trihex::Image::Starfield,
             glyph: Glyph::Hexatri { rotate: true },
             overlay,
         }
@@ -237,8 +237,8 @@ mod tests {
                 h,
                 &Scene {
                     seed: 0,
-                    motion: background::Motion::Static,
-                    image: background::Image::None,
+                    motion: trihex::Motion::Static,
+                    image: trihex::Image::None,
                     glyph: Glyph::Hexatri { rotate: true },
                     overlay: Some(Rain {
                         angle: 0.0,

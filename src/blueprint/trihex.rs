@@ -7,7 +7,8 @@ use crate::blueprint::style::{
     BLIND_S, FILL_O, PAL, SPACE_FRAC, SPACE_STARS, SPACE_STROKE_O, STROKE_O, VOID,
 };
 use crate::geom::{Lattice, NB, SQRT3, fmt, pts, regular_poly};
-use crate::params::{Scene, background};
+use crate::params::Scene;
+use crate::params::trihex::{Image, Motion};
 use crate::rng::{PyRandom, cell_rng};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -211,8 +212,8 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
     let plan = assign(lat, rng);
 
     let scan_delay = |x: f64, y: f64| fmt(-((x + y) / (w as f64 + h as f64)) * 5.0);
-    let closeopen = scene.motion == background::Motion::Closeopen;
-    let space = if scene.image == background::Image::Starfield {
+    let closeopen = scene.motion == Motion::Closeopen;
+    let space = if scene.image == Image::Starfield {
         space_cells(lat, scene.seed, closeopen)
     } else {
         HashSet::new()
@@ -244,7 +245,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
             STROKE_O
         };
         let (anim, fill, fill_opacity) = match scene.motion {
-            background::Motion::Scan => (
+            Motion::Scan => (
                 Some(HexAnim {
                     cls: "scan",
                     style: format!("animation-delay:{}s", scan_delay(cx, cy)),
@@ -253,7 +254,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
                 None,
             ),
             // border-only pulse: the usual pale fill flash would wash the stars out
-            background::Motion::Lights if void => {
+            Motion::Lights if void => {
                 let delay = fmt(cell_rng("delay", scene.seed, *r, *c).random() * 9.0);
                 (
                     Some(HexAnim {
@@ -264,7 +265,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
                     None,
                 )
             }
-            background::Motion::Lights => {
+            Motion::Lights => {
                 // two draws off the global stream, delay before duration
                 let delay = fmt(rng.random() * 9.0);
                 let dur = fmt(7.0 + rng.random() * 5.0);
@@ -294,7 +295,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
         .map(|(v1, v2, apex, col)| TriFill {
             points: pts(&[*v1, *v2, *apex]),
             col: col.clone(),
-            style: (scene.motion == background::Motion::Scan).then(|| {
+            style: (scene.motion == Motion::Scan).then(|| {
                 let (tx, ty) = ((v1.0 + v2.0 + apex.0) / 3.0, (v1.1 + v2.1 + apex.1) / 3.0);
                 format!("animation-delay:{}s", scan_delay(tx, ty))
             }),
@@ -321,11 +322,11 @@ mod tests {
     use crate::params::Glyph;
     use crate::svg::build_svg;
 
-    fn starfield(motion: background::Motion) -> Scene {
+    fn starfield(motion: Motion) -> Scene {
         Scene {
             seed: 0,
             motion,
-            image: background::Image::Starfield,
+            image: Image::Starfield,
             glyph: Glyph::Hexatri { rotate: true },
             overlay: None,
         }
@@ -360,7 +361,7 @@ mod tests {
                 "space cells are not sparse"
             );
 
-            let svg = build_svg(w, h, &starfield(background::Motion::Lights));
+            let svg = build_svg(w, h, &starfield(Motion::Lights));
             assert_eq!(
                 svg.matches("<clipPath id=\"sp").count(),
                 space.len(),
@@ -390,7 +391,7 @@ mod tests {
                 );
             }
 
-            let svg = build_svg(w, h, &starfield(background::Motion::Closeopen));
+            let svg = build_svg(w, h, &starfield(Motion::Closeopen));
             assert_eq!(
                 svg.matches("class=\"blind\"").count(),
                 every.len(),
@@ -425,7 +426,7 @@ mod tests {
                 "a window is out of phase with its own blind"
             );
             assert!(
-                !build_svg(w, h, &starfield(background::Motion::Lights)).contains("class=\"win\""),
+                !build_svg(w, h, &starfield(Motion::Lights)).contains("class=\"win\""),
                 "a bg without blinds has nothing covering its windows, so they must never switch off"
             );
         }

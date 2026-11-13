@@ -32,8 +32,8 @@ pub struct Rain {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scene {
     pub seed: u32,
-    pub motion: background::Motion,
-    pub image: background::Image,
+    pub motion: trihex::Motion,
+    pub image: trihex::Image,
     pub glyph: Glyph,
     pub overlay: Option<Rain>,
 }
@@ -42,10 +42,10 @@ impl Scene {
     /// Legacy lowercase vocabulary: it names the output files (STARFIELD is `space`).
     pub fn slug(&self) -> String {
         let motion = match self.motion {
-            background::Motion::Static => "static",
-            background::Motion::Scan => "scan",
-            background::Motion::Lights => "lights",
-            background::Motion::Closeopen => "closeopen",
+            trihex::Motion::Static => "static",
+            trihex::Motion::Scan => "scan",
+            trihex::Motion::Lights => "lights",
+            trihex::Motion::Closeopen => "closeopen",
         };
         let (fg, icon) = match self.glyph {
             Glyph::Hexatri { rotate: true } => ("rotate", "hexatri"),
@@ -53,8 +53,8 @@ impl Scene {
             Glyph::Ship => ("static", "ship"),
         };
         let image = match self.image {
-            background::Image::None => "none",
-            background::Image::Starfield => "space",
+            trihex::Image::None => "none",
+            trihex::Image::Starfield => "space",
         };
         let overlay = if self.overlay.is_some() {
             "matrix"
@@ -65,8 +65,15 @@ impl Scene {
     }
 }
 
+fn trihex_of(p: &Parameters) -> Trihex {
+    match p.background.as_ref().and_then(|b| b.ground.as_ref()) {
+        Some(background::Ground::Trihex(t)) => *t,
+        None => Trihex::default(),
+    }
+}
+
 pub fn resolve(p: &Parameters) -> Scene {
-    let bg = p.background.unwrap_or_default();
+    let bg = trihex_of(p);
     let glyph = match p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
         Some(icon::Glyph::Ship(_)) => Glyph::Ship,
         Some(icon::Glyph::Hexatri(h)) => Glyph::Hexatri {
@@ -97,10 +104,10 @@ pub fn resolve(p: &Parameters) -> Scene {
 
 /// The rules parameters.proto cannot state. Prefer moving a field over adding a check here.
 pub fn validate(p: &Parameters) -> Result<(), Error> {
-    let bg = p.background.unwrap_or_default();
-    if bg.motion() == background::Motion::Closeopen && bg.image() == background::Image::None {
+    let bg = trihex_of(p);
+    if bg.motion() == trihex::Motion::Closeopen && bg.image() == trihex::Image::None {
         return Err(Error::Invalid(
-            "background motion CLOSEOPEN has nothing to reveal with image NONE \
+            "background.trihex.motion CLOSEOPEN has nothing to reveal with background.trihex.image NONE \
              (its hexagons open onto an image); set image STARFIELD, or motion LIGHTS"
                 .into(),
         ));
@@ -185,9 +192,9 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
     use serde_json::json;
     let mut out = Vec::new();
     // Dense enums: walking until try_from fails is declaration order.
-    for motion in (0..).map_while(|i| background::Motion::try_from(i).ok()) {
-        for image in (0..).map_while(|i| background::Image::try_from(i).ok()) {
-            if motion == background::Motion::Closeopen && image == background::Image::None {
+    for motion in (0..).map_while(|i| trihex::Motion::try_from(i).ok()) {
+        for image in (0..).map_while(|i| trihex::Image::try_from(i).ok()) {
+            if motion == trihex::Motion::Closeopen && image == trihex::Image::None {
                 continue; // rejected by validate(), though renderable
             }
             for glyph in [
@@ -201,7 +208,7 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
                 ] {
                     out.push(json!({
                         "seed": seed,
-                        "background": {"motion": motion.as_str_name(), "image": image.as_str_name()},
+                        "background": {"trihex": {"motion": motion.as_str_name(), "image": image.as_str_name()}},
                         "icon": glyph,
                         "overlay": overlay,
                     }));
@@ -222,25 +229,27 @@ mod tests {
         assert!(parse(r#"{"overlay":{"angle":90}}"#).is_err());
         assert!(parse(r#"{"output":{"file":{"path":"a.svg"},"stdout":{}}}"#).is_err());
         assert!(parse(r#"{"backgrond":{}}"#).is_err());
-        assert!(parse(r#"{"background":{"motion":"SPIRAL"}}"#).is_err());
+        assert!(parse(r#"{"background":{"trihex":{"motion":"SPIRAL"}}}"#).is_err());
+    }
+
+    #[test]
+    fn the_old_flat_background_is_rejected() {
+        assert!(parse(r#"{"background":{"motion":"SCAN"}}"#).is_err());
     }
 
     #[test]
     fn an_empty_config_is_a_complete_config() {
         let p = parse("{}").expect("{} must parse");
         assert_eq!(p.seed, 0);
-        assert_eq!(
-            p.background.unwrap_or_default().motion(),
-            background::Motion::Static
-        );
+        assert_eq!(trihex_of(&p).motion(), trihex::Motion::Static);
         assert!(p.icon.is_none());
         assert_eq!(
-            parse(r#"{"background":{"motion":"CLOSEOPEN","image":"STARFIELD"}}"#)
-                .unwrap()
-                .background
-                .unwrap()
-                .motion(),
-            background::Motion::Closeopen
+            trihex_of(
+                &parse(r#"{"background":{"trihex":{"motion":"CLOSEOPEN","image":"STARFIELD"}}}"#)
+                    .unwrap()
+            )
+            .motion(),
+            trihex::Motion::Closeopen
         );
     }
 
@@ -248,8 +257,8 @@ mod tests {
     fn an_empty_config_resolves_to_the_old_defaults() {
         let s = resolve(&parse("{}").unwrap());
         assert_eq!(s.seed, 0);
-        assert_eq!(s.motion, background::Motion::Static);
-        assert_eq!(s.image, background::Image::None);
+        assert_eq!(s.motion, trihex::Motion::Static);
+        assert_eq!(s.image, trihex::Image::None);
         assert_eq!(s.glyph, Glyph::Hexatri { rotate: true });
         assert!(s.overlay.is_none());
         assert_eq!(s.slug(), "static-rotate-hexatri-none-none");
@@ -259,7 +268,7 @@ mod tests {
     fn a_full_config_resolves_every_axis() {
         let s = resolve(
             &parse(
-                r##"{"seed":7,"background":{"motion":"CLOSEOPEN","image":"STARFIELD"},
+                r##"{"seed":7,"background":{"trihex":{"motion":"CLOSEOPEN","image":"STARFIELD"}},
                     "icon":{"ship":{}},
                     "overlay":{"matrix":{"angle":250,"color":"#395e53cc"}}}"##,
             )
@@ -286,7 +295,7 @@ mod tests {
     #[test]
     fn validate_rejects_what_the_schema_cannot() {
         for bad in [
-            r#"{"background":{"motion":"CLOSEOPEN","image":"NONE"}}"#,
+            r#"{"background":{"trihex":{"motion":"CLOSEOPEN","image":"NONE"}}}"#,
             r#"{"overlay":{"matrix":{"angle":400}}}"#,
             r#"{"overlay":{"matrix":{"angle":-1}}}"#,
             r#"{"overlay":{"matrix":{"color":"395e53"}}}"#,
@@ -297,7 +306,8 @@ mod tests {
         }
         assert!(
             validate(
-                &parse(r#"{"background":{"motion":"CLOSEOPEN","image":"STARFIELD"}}"#).unwrap()
+                &parse(r#"{"background":{"trihex":{"motion":"CLOSEOPEN","image":"STARFIELD"}}}"#)
+                    .unwrap()
             )
             .is_ok()
         );
@@ -319,7 +329,7 @@ mod tests {
         assert_eq!(cfgs.len(), 42);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
-            r#"{"background":{"image":"NONE","motion":"STATIC"},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#
+            r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#
         );
         for c in &cfgs {
             let text = serde_json::to_string(c).unwrap();

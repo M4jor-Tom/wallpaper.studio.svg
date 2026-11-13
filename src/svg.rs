@@ -5,7 +5,7 @@ use crate::blueprint::matrix::pat_matrix;
 use crate::blueprint::style::{PAL, css};
 use crate::blueprint::trihex::pat_trihex;
 use crate::geom::{Lattice, fmt};
-use crate::params::{Glyph, Scene, background};
+use crate::params::{Glyph, Scene, trihex};
 use crate::rng::PyRandom;
 
 /// `bg` is `userSpaceOnUse` so any shape can paint canvas: `objectBoundingBox` would squeeze the ramp
@@ -44,7 +44,7 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     let lat = Lattice::new(w, h);
     let (u, clear_r) = (lat.u, lat.clear_r);
 
-    let nebulae = if scene.image == background::Image::Starfield {
+    let nebulae = if scene.image == trihex::Image::Starfield {
         vec![("neba", "#6fb7d1"), ("nebb", "#77c9a6")]
     } else {
         Vec::new()
@@ -79,8 +79,8 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
         "trihexagonal background"
     }
     .to_string();
-    if scene.image == background::Image::Starfield {
-        label.push_str(if scene.motion == background::Motion::Closeopen {
+    if scene.image == trihex::Image::Starfield {
+        label.push_str(if scene.motion == trihex::Motion::Closeopen {
             ", some hexagons opening and closing onto a starfield"
         } else {
             ", some hexagons showing a starfield"

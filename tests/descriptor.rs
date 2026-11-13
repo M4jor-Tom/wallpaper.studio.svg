@@ -10,6 +10,7 @@ fn the_descriptor_carries_the_whole_schema() {
         "Parameters",
         "Output",
         "Background",
+        "Trihex",
         "Icon",
         "Hexatri",
         "Ship",

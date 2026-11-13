@@ -1,4 +1,4 @@
 {"output": {"file": {"path": "docs/moods/blueprint/samples/matrix-hexatri.svg", "resolution": "1280x720"}},
- "background": {"motion": "STATIC"},
+ "background": {"trihex":{"motion": "STATIC"}},
  "icon": {"hexatri": {}},
  "overlay": {"matrix": {"angle": 250}}}
