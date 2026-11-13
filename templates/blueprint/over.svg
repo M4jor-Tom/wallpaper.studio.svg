@@ -1,0 +1,1 @@
+<circle cx="{{ cx }}" cy="{{ cy }}" r="{{ clear_r }}" fill="url(#halo)"/><rect width="{{ ws }}" height="{{ hs }}" fill="url(#vig)"/>

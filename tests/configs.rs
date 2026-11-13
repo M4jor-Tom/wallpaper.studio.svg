@@ -1,4 +1,4 @@
-use bgsvg::params::{Glyph, parse, resolve, valid_configs, validate};
+use bgsvg::params::{Glyph, Ground, parse, resolve, trihex, valid_configs, validate};
 use bgsvg::svg::build_svg;
 
 #[test]
@@ -23,14 +23,15 @@ fn every_valid_config_dispatches_correctly() {
             ship,
             "ship facets leaked across icons: {text}"
         );
+        let Ground::Trihex { motion, image } = scene.ground;
         assert_eq!(
             svg.contains("<clipPath"),
-            scene.image == bgsvg::params::trihex::Image::Starfield,
+            image == trihex::Image::Starfield,
             "bg-image dispatch is wrong: {text}"
         );
         assert_eq!(
             svg.contains(r#"class="blind""#),
-            scene.motion == bgsvg::params::trihex::Motion::Closeopen,
+            motion == trihex::Motion::Closeopen,
             "blinds must exist exactly when closeopen has windows to cover: {text}"
         );
         assert_eq!(

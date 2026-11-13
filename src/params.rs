@@ -12,6 +12,7 @@ pub const DESCRIPTOR: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/descript
 use crate::Error;
 use crate::blueprint::style::MATRIX_COLOR;
 use crate::color::hex_rgba;
+use crate::mood::Mood;
 
 pub fn parse(text: &str) -> Result<Parameters, serde_json::Error> {
     serde_json::from_str(text)
@@ -23,6 +24,14 @@ pub enum Glyph {
     Ship,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Ground {
+    Trihex {
+        motion: trihex::Motion,
+        image: trihex::Image,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Rain {
     pub angle: f64,
@@ -32,16 +41,29 @@ pub struct Rain {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scene {
     pub seed: u32,
-    pub motion: trihex::Motion,
-    pub image: trihex::Image,
+    pub ground: Ground,
     pub glyph: Glyph,
     pub overlay: Option<Rain>,
 }
 
 impl Scene {
+    /// True when the ground, the glyph or the overlay belongs to `mood`.
+    pub fn uses(&self, mood: Mood) -> bool {
+        let ground = match self.ground {
+            Ground::Trihex { .. } => Mood::Blueprint,
+        };
+        let glyph = match self.glyph {
+            Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
+        };
+        // matrix is the only overlay
+        let overlay = self.overlay.as_ref().map(|_| Mood::Blueprint);
+        [Some(ground), Some(glyph), overlay].contains(&Some(mood))
+    }
+
     /// Legacy lowercase vocabulary: it names the output files (STARFIELD is `space`).
     pub fn slug(&self) -> String {
-        let motion = match self.motion {
+        let Ground::Trihex { motion, image } = self.ground;
+        let motion = match motion {
             trihex::Motion::Static => "static",
             trihex::Motion::Scan => "scan",
             trihex::Motion::Lights => "lights",
@@ -52,7 +74,7 @@ impl Scene {
             Glyph::Hexatri { rotate: false } => ("static", "hexatri"),
             Glyph::Ship => ("static", "ship"),
         };
-        let image = match self.image {
+        let image = match image {
             trihex::Image::None => "none",
             trihex::Image::Starfield => "space",
         };
@@ -95,8 +117,10 @@ pub fn resolve(p: &Parameters) -> Scene {
             });
     Scene {
         seed: p.seed,
-        motion: bg.motion(),
-        image: bg.image(),
+        ground: Ground::Trihex {
+            motion: bg.motion(),
+            image: bg.image(),
+        },
         glyph,
         overlay,
     }
@@ -257,8 +281,13 @@ mod tests {
     fn an_empty_config_resolves_to_the_old_defaults() {
         let s = resolve(&parse("{}").unwrap());
         assert_eq!(s.seed, 0);
-        assert_eq!(s.motion, trihex::Motion::Static);
-        assert_eq!(s.image, trihex::Image::None);
+        assert_eq!(
+            s.ground,
+            Ground::Trihex {
+                motion: trihex::Motion::Static,
+                image: trihex::Image::None,
+            }
+        );
         assert_eq!(s.glyph, Glyph::Hexatri { rotate: true });
         assert!(s.overlay.is_none());
         assert_eq!(s.slug(), "static-rotate-hexatri-none-none");

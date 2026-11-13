@@ -7,7 +7,6 @@ use crate::blueprint::style::{
     BLIND_S, FILL_O, PAL, SPACE_FRAC, SPACE_STARS, SPACE_STROKE_O, STROKE_O, VOID,
 };
 use crate::geom::{Lattice, NB, SQRT3, fmt, pts, regular_poly};
-use crate::params::Scene;
 use crate::params::trihex::{Image, Motion};
 use crate::rng::{PyRandom, cell_rng};
 
@@ -207,14 +206,22 @@ struct Trihex {
     sw: String,
 }
 
-pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRandom) -> String {
+pub fn pat_trihex(
+    w: u32,
+    h: u32,
+    lat: &Lattice,
+    seed: u32,
+    motion: Motion,
+    image: Image,
+    rng: &mut PyRandom,
+) -> String {
     let sw = fmt(lat.u * 0.0013);
     let plan = assign(lat, rng);
 
     let scan_delay = |x: f64, y: f64| fmt(-((x + y) / (w as f64 + h as f64)) * 5.0);
-    let closeopen = scene.motion == Motion::Closeopen;
-    let space = if scene.image == Image::Starfield {
-        space_cells(lat, scene.seed, closeopen)
+    let closeopen = motion == Motion::Closeopen;
+    let space = if image == Image::Starfield {
+        space_cells(lat, seed, closeopen)
     } else {
         HashSet::new()
     };
@@ -228,14 +235,14 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
         let void = space.contains(&(*r, *c));
         if void {
             voids.push(space_cell(
-                scene.seed,
+                seed,
                 poly.clone(),
                 cx,
                 cy,
                 lat.s,
                 *r,
                 *c,
-                closeopen.then(|| blind_phase(scene.seed, *r, *c)),
+                closeopen.then(|| blind_phase(seed, *r, *c)),
             ));
         }
         // Window borders sit brighter, except under closeopen where every cell is a window.
@@ -244,7 +251,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
         } else {
             STROKE_O
         };
-        let (anim, fill, fill_opacity) = match scene.motion {
+        let (anim, fill, fill_opacity) = match motion {
             Motion::Scan => (
                 Some(HexAnim {
                     cls: "scan",
@@ -255,7 +262,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
             ),
             // border-only pulse: the usual pale fill flash would wash the stars out
             Motion::Lights if void => {
-                let delay = fmt(cell_rng("delay", scene.seed, *r, *c).random() * 9.0);
+                let delay = fmt(cell_rng("delay", seed, *r, *c).random() * 9.0);
                 (
                     Some(HexAnim {
                         cls: "lightb",
@@ -295,7 +302,7 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
         .map(|(v1, v2, apex, col)| TriFill {
             points: pts(&[*v1, *v2, *apex]),
             col: col.clone(),
-            style: (scene.motion == Motion::Scan).then(|| {
+            style: (motion == Motion::Scan).then(|| {
                 let (tx, ty) = ((v1.0 + v2.0 + apex.0) / 3.0, (v1.1 + v2.1 + apex.1) / 3.0);
                 format!("animation-delay:{}s", scan_delay(tx, ty))
             }),
@@ -319,14 +326,16 @@ pub fn pat_trihex(w: u32, h: u32, lat: &Lattice, scene: &Scene, rng: &mut PyRand
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::params::Glyph;
+    use crate::params::{Glyph, Ground, Scene};
     use crate::svg::build_svg;
 
     fn starfield(motion: Motion) -> Scene {
         Scene {
             seed: 0,
-            motion,
-            image: Image::Starfield,
+            ground: Ground::Trihex {
+                motion,
+                image: Image::Starfield,
+            },
             glyph: Glyph::Hexatri { rotate: true },
             overlay: None,
         }

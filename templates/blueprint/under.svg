@@ -1,0 +1,3 @@
+<rect width="{{ ws }}" height="{{ hs }}" fill="url(#bg)"/><g>
+{{ lattice }}
+</g>

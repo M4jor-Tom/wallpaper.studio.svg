@@ -2,11 +2,11 @@
 {{ defs }}
 </defs><style>
 {{ css }}
-</style><rect width="{{ ws }}" height="{{ hs }}" fill="url(#bg)"/><g>
-{{ bg }}
-</g>
+</style>
+{{ under }}
 {{ rain }}
-<circle cx="{{ cx }}" cy="{{ cy }}" r="{{ clear_r }}" fill="url(#halo)"/><rect width="{{ ws }}" height="{{ hs }}" fill="url(#vig)"/><g transform="{{ icon_transform }}" filter="url(#ink)">
+{{ over }}
+<g transform="{{ icon_transform }}"{% if let Some(f) = icon_filter +%} filter="{{ f }}"{% endif %}>
 {{ glyph }}
 </g></svg>
 
