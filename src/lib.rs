@@ -3,6 +3,7 @@
 pub mod blueprint;
 pub mod color;
 pub mod geom;
+pub mod mood;
 pub mod params;
 pub mod rng;
 pub mod svg;

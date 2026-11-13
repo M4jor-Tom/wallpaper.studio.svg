@@ -19,3 +19,4 @@ prost-build = "0.14"
 [dev-dependencies]
 # tests/golden.rs only: checks the SVG is well-formed XML
 roxmltree = "0.20"
+prost-types = "0.14"
