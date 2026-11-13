@@ -23,6 +23,25 @@ pub fn parse(text: &str) -> Result<Parameters, serde_json::Error> {
 pub enum Glyph {
     Hexatri { rotate: bool },
     Ship,
+    Punk(Rig),
+}
+
+/// A zine head's gear and how it turns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rig {
+    pub gear: rider::Gear,
+    pub ccw: bool,
+    /// turns a minute; 0 = still
+    pub rpm: u32,
+}
+
+fn rig_of(r: Option<&Rider>) -> Rig {
+    let r = r.cloned().unwrap_or_default();
+    Rig {
+        gear: r.gear(),
+        ccw: r.counter_clockwise,
+        rpm: r.spin_rpm.unwrap_or(8),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +87,7 @@ impl Scene {
         };
         let glyph = match self.glyph {
             Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
+            Glyph::Punk(_) => Mood::Zine,
         };
         let overlay = self.overlay.as_ref().map(|Rain { .. }| Mood::Blueprint);
         [Some(ground), Some(glyph), overlay].contains(&Some(mood))
@@ -79,6 +99,8 @@ impl Scene {
             Glyph::Hexatri { rotate: true } => ("rotate", "hexatri"),
             Glyph::Hexatri { rotate: false } => ("static", "hexatri"),
             Glyph::Ship => ("static", "ship"),
+            Glyph::Punk(Rig { rpm: 0, .. }) => ("still", "punk"),
+            Glyph::Punk(_) => ("spin", "punk"),
         };
         let overlay = if self.overlay.is_some() {
             "matrix"
@@ -141,6 +163,7 @@ pub fn resolve(p: &Parameters) -> Scene {
         Some(icon::Glyph::Hexatri(h)) => Glyph::Hexatri {
             rotate: h.motion() == hexatri::Motion::Rotate,
         },
+        Some(icon::Glyph::Punk(p)) => Glyph::Punk(rig_of(p.rider.as_ref())),
         None => Glyph::Hexatri { rotate: true },
     };
     let overlay =
@@ -196,6 +219,14 @@ pub fn validate(p: &Parameters) -> Result<(), Error> {
             &m.color
         };
         hex_rgba(color).map_err(|e| Error::Invalid(format!("overlay.matrix.color: {e}")))?;
+    }
+    if let Some(icon::Glyph::Punk(punk)) = p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
+        let rpm = rig_of(punk.rider.as_ref()).rpm;
+        if rpm > 30 {
+            return Err(Error::Invalid(format!(
+                "icon.punk.rider.spin_rpm: {rpm} is above 30 (turns a minute; 0 = still)"
+            )));
+        }
     }
     // checked whatever the scene: a zine block with no zine item is inert, not invalid
     let spot = spot_of(p);
@@ -290,6 +321,7 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             json!({"hexatri": {"motion": "ROTATE"}}),
             json!({"hexatri": {"motion": "STATIC"}}),
             json!({"ship": {}}),
+            json!({"punk": {}}),
         ] {
             for overlay in [
                 json!({}),
@@ -322,6 +354,19 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
     let mut spot = scene(json!({"summit": {}}), hexatri(), json!({}));
     spot["zine"] = json!({"spot": "#22c8e5"});
     out.push(spot);
+    // each rider setting once, on a summit punk; reverse on a still gear would repeat a picture
+    for rider in [
+        json!({"gear": "CROSSED_SKIS"}),
+        json!({"counter_clockwise": true}),
+        json!({"spin_rpm": 0}),
+        json!({"spin_rpm": 20}),
+    ] {
+        out.push(scene(
+            json!({"summit": {}}),
+            json!({"punk": {"rider": rider}}),
+            json!({}),
+        ));
+    }
     out
 }
 
@@ -469,6 +514,28 @@ mod tests {
     }
 
     #[test]
+    fn spin_rpm_is_capped_and_zero_means_still() {
+        let punk = |rider: &str| format!(r#"{{"icon":{{"punk":{{"rider":{rider}}}}}}}"#);
+        let e = validate(&parse(&punk(r#"{"spin_rpm":31}"#)).unwrap())
+            .unwrap_err()
+            .to_string();
+        assert!(e.starts_with("icon.punk.rider.spin_rpm:"), "{e}");
+        assert!(validate(&parse(&punk(r#"{"spin_rpm":30}"#)).unwrap()).is_ok());
+        let rig = |rider: &str| match resolve(&parse(&punk(rider)).unwrap()) {
+            Scene {
+                glyph: Glyph::Punk(r),
+                ..
+            } => r,
+            s => panic!("{s:?}"),
+        };
+        assert_eq!(rig(r#"{"spin_rpm":0}"#).rpm, 0);
+        assert_eq!(rig("{}").rpm, 8);
+        let s = resolve(&parse(&punk(r#"{"spin_rpm":0}"#)).unwrap());
+        assert!(s.uses(Mood::Zine) && s.uses(Mood::Blueprint));
+        assert_eq!(s.slug(), "static-still-punk-none-none");
+    }
+
+    #[test]
     fn parse_res_takes_presets_and_dimensions() {
         assert_eq!(parse_res("").unwrap(), (1920, 1080));
         assert_eq!(parse_res("4K").unwrap(), (3840, 2160));
@@ -481,7 +548,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 65);
+        assert_eq!(cfgs.len(), 89);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#

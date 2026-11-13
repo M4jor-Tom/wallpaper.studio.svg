@@ -50,6 +50,7 @@ message Icon {
   oneof glyph {
     Hexatri hexatri = 1;
     Ship    ship    = 2;
+    Punk    punk    = 3;
   }
 }
 message Hexatri {
@@ -57,6 +58,15 @@ message Hexatri {
   Motion motion = 1;
 }
 message Ship {}
+
+// Shared by every zine head: the gear spinning behind it.
+message Rider {
+  enum Gear { BOARD = 0; CROSSED_SKIS = 1; }
+  Gear gear = 1;
+  bool counter_clockwise = 2;    // inert when spin_rpm is 0
+  optional uint32 spin_rpm = 3;  // turns a minute, 0-30; unset = 8, 0 = still
+}
+message Punk { Rider rider = 1; }
 
 message Overlay {
   oneof layer { Matrix matrix = 1; }

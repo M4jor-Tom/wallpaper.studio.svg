@@ -7,13 +7,14 @@ use crate::blueprint::style::PAL;
 use crate::blueprint::trihex::pat_trihex;
 use crate::geom::{Lattice, fmt};
 use crate::mood::Mood;
-use crate::params::{Glyph, Ground, Scene, Snow, trihex};
+use crate::params::{Glyph, Ground, Rig, Scene, Snow, rider::Gear, trihex};
 use crate::rng::PyRandom;
 use crate::zine;
 use crate::zine::halfpipe::halfpipe;
 use crate::zine::print::Frame;
 use crate::zine::summit::summit;
 use crate::zine::treeline::treeline;
+use crate::zine::{punk, rider};
 
 /// `bg` is `userSpaceOnUse` so any shape can paint canvas: `objectBoundingBox` would squeeze the ramp
 /// into one hexagon, and a shut CLOSEOPEN blind would show as a patch.
@@ -99,7 +100,7 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     }
     if scene.uses(Mood::Zine) {
         defs.push_str(&zine::defs(&scene.spot, frame.s));
-        css.push_str(&zine::css());
+        css.push_str(&zine::css(matches!(scene.glyph, Glyph::Punk(_))));
     }
 
     let (under, over) = match scene.ground {
@@ -142,9 +143,17 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     });
     // blueprint glyphs are drop-shadowed and scaled to the lattice, whatever the ground
     let on_lattice = format!("translate({cx},{cy}) scale({})", fmt(lat.u * 0.34 / 200.0));
-    let (glyph, icon_transform, icon_filter) = match scene.glyph {
+    // zine glyphs are die-cut stickers drawn as geometry, scaled to the print and hung on the head centre
+    let in_print = format!(
+        "translate({},{}) scale({})",
+        fmt(frame.cx),
+        fmt(frame.cy),
+        fmt(1.06 * frame.s)
+    );
+    let (glyph, icon_transform, icon_filter) = match &scene.glyph {
         Glyph::Ship => (ico_ship(), on_lattice, Some("url(#ink)")),
-        Glyph::Hexatri { rotate } => (ico_hexatri(rotate), on_lattice, Some("url(#ink)")),
+        Glyph::Hexatri { rotate } => (ico_hexatri(*rotate), on_lattice, Some("url(#ink)")),
+        Glyph::Punk(rig) => (rider::icon(&scene.spot, rig, &punk::head()), in_print, None),
     };
 
     let mut label = match scene.ground {
@@ -154,8 +163,18 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
         Ground::Halfpipe { .. } => "a black print of a snow halfpipe under a turning sunburst",
     }
     .to_string();
-    if scene.glyph == Glyph::Ship {
-        label.push_str(" with a spaceship icon");
+    match scene.glyph {
+        Glyph::Hexatri { .. } => {}
+        Glyph::Ship => label.push_str(" with a spaceship icon"),
+        Glyph::Punk(Rig { gear, rpm, .. }) => {
+            label.push_str(" with a punk head with a rainbow mohawk");
+            label.push_str(match (gear, rpm > 0) {
+                (Gear::Board, true) => " over a spinning snowboard",
+                (Gear::CrossedSkis, true) => " over spinning crossed skis",
+                (Gear::Board, false) => " over a snowboard",
+                (Gear::CrossedSkis, false) => " over crossed skis",
+            });
+        }
     }
     label.push_str(match scene.ground {
         Ground::Trihex {

@@ -21,7 +21,8 @@ fn every_valid_config_dispatches_correctly() {
             scene.uses(Mood::Zine),
             has("background", "summit")
                 || has("background", "treeline")
-                || has("background", "halfpipe"),
+                || has("background", "halfpipe")
+                || has("icon", "punk"),
             "{text}"
         );
         assert_eq!(
@@ -89,7 +90,7 @@ fn every_valid_config_dispatches_correctly() {
         );
         n += 1;
     }
-    assert_eq!(n, 65);
+    assert_eq!(n, 89);
 }
 
 #[test]
@@ -125,6 +126,18 @@ fn an_inert_zine_block_changes_nothing() {
         n += 1;
     }
     assert!(n > 0, "no blueprint-only config to try");
+}
+
+#[test]
+fn counter_clockwise_without_spin_changes_nothing() {
+    let render = |rider: serde_json::Value| {
+        let cfg = json!({"background": {"summit": {}}, "icon": {"punk": {"rider": rider}}});
+        render_to_string(&cfg.to_string(), 640, 360).unwrap_or_else(|e| panic!("{cfg}: {e}"))
+    };
+    assert_eq!(
+        render(json!({"spin_rpm": 0})),
+        render(json!({"spin_rpm": 0, "counter_clockwise": true}))
+    );
 }
 
 #[test]
