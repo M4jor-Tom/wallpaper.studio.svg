@@ -3,6 +3,7 @@ pub mod print;
 pub mod snow;
 pub mod style;
 pub mod summit;
+pub mod treeline;
 
 use askama::Template;
 

@@ -12,6 +12,7 @@ use crate::rng::PyRandom;
 use crate::zine;
 use crate::zine::print::Frame;
 use crate::zine::summit::summit;
+use crate::zine::treeline::treeline;
 
 /// `bg` is `userSpaceOnUse` so any shape can paint canvas: `objectBoundingBox` would squeeze the ramp
 /// into one hexagon, and a shut CLOSEOPEN blind would show as a patch.
@@ -126,6 +127,10 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
             summit(&frame, scene.seed, &scene.spot) + &zine::snow::snow(&frame, scene.seed, snow),
             String::new(),
         ),
+        Ground::Treeline { snow } => (
+            treeline(&frame, scene.seed, &scene.spot) + &zine::snow::snow(&frame, scene.seed, snow),
+            String::new(),
+        ),
     };
     let rain = scene.overlay.as_ref().map_or(String::new(), |rain| {
         pat_matrix(w, h, &lat, scene.seed, rain.angle, &rain.color)
@@ -140,6 +145,7 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     let mut label = match scene.ground {
         Ground::Trihex { .. } => "trihexagonal background",
         Ground::Summit { .. } => "a black print of snowy peaks under a turning sunburst",
+        Ground::Treeline { .. } => "a black print of a pine treeline under a halftone moon",
     }
     .to_string();
     if scene.glyph == Glyph::Ship {
@@ -154,9 +160,16 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
             image: trihex::Image::Starfield,
             ..
         } => ", some hexagons showing a starfield",
-        Ground::Trihex { .. } | Ground::Summit { snow: Snow::NoSnow } => "",
-        Ground::Summit { snow: Snow::Flurry } => ", with snow falling",
+        Ground::Trihex { .. }
+        | Ground::Summit { snow: Snow::NoSnow }
+        | Ground::Treeline { snow: Snow::NoSnow } => "",
+        Ground::Summit { snow: Snow::Flurry } | Ground::Treeline { snow: Snow::Flurry } => {
+            ", with snow falling"
+        }
         Ground::Summit {
+            snow: Snow::Blizzard,
+        }
+        | Ground::Treeline {
             snow: Snow::Blizzard,
         } => ", in a blizzard",
     });

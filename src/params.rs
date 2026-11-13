@@ -34,6 +34,9 @@ pub enum Ground {
     Summit {
         snow: Snow,
     },
+    Treeline {
+        snow: Snow,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -58,7 +61,7 @@ impl Scene {
     pub fn uses(&self, mood: Mood) -> bool {
         let ground = match self.ground {
             Ground::Trihex { .. } => Mood::Blueprint,
-            Ground::Summit { .. } => Mood::Zine,
+            Ground::Summit { .. } | Ground::Treeline { .. } => Mood::Zine,
         };
         let glyph = match self.glyph {
             Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
@@ -93,13 +96,18 @@ impl Scene {
                 };
                 format!("{motion}-{fg}-{icon}-{image}-{overlay}")
             }
-            Ground::Summit { snow } => {
+            Ground::Summit { snow } | Ground::Treeline { snow } => {
+                let name = if matches!(self.ground, Ground::Summit { .. }) {
+                    "summit"
+                } else {
+                    "treeline"
+                };
                 let snow = match snow {
                     Snow::Flurry => "flurry",
                     Snow::NoSnow => "nosnow",
                     Snow::Blizzard => "blizzard",
                 };
-                format!("summit-{snow}-{fg}-{icon}-{overlay}")
+                format!("{name}-{snow}-{fg}-{icon}-{overlay}")
             }
         }
     }
@@ -114,6 +122,7 @@ fn ground_of(p: &Parameters) -> Ground {
     match p.background.as_ref().and_then(|b| b.ground.as_ref()) {
         Some(background::Ground::Trihex(t)) => trihex(t),
         Some(background::Ground::Summit(s)) => Ground::Summit { snow: s.snow() },
+        Some(background::Ground::Treeline(t)) => Ground::Treeline { snow: t.snow() },
         None => trihex(&Trihex::default()),
     }
 }
@@ -267,6 +276,7 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
         }
     }
     grounds.push(json!({"summit": {}}));
+    grounds.push(json!({"treeline": {}}));
 
     let scene = |background, icon, overlay| json!({"seed": seed, "background": background, "icon": icon, "overlay": overlay});
     let mut out = Vec::new();
@@ -294,6 +304,11 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             json!({}),
         ));
     }
+    out.push(scene(
+        json!({"treeline": {"snow": "BLIZZARD"}}),
+        hexatri(),
+        json!({}),
+    ));
     let mut spot = scene(json!({"summit": {}}), hexatri(), json!({}));
     spot["zine"] = json!({"spot": "#22c8e5"});
     out.push(spot);
@@ -456,7 +471,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 51);
+        assert_eq!(cfgs.len(), 58);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#

@@ -1,0 +1,7 @@
+{% macro pine(p) %}<rect x="{{ p.trunk.0 }}" y="{{ p.trunk.1 }}" width="{{ p.trunk.2 }}" height="{{ p.trunk.3 }}" fill="{{ paper }}"/>
+{% for t in p.tiers %}<polygon points="{{ t.tri }}" fill="{{ sheet }}" stroke="{{ paper }}" stroke-width="{{ line_w }}" stroke-linejoin="round"/><clipPath id="{{ t.id }}"><polygon points="{{ t.face }}"/></clipPath><g clip-path="url(#{{ t.id }})" stroke="{{ spot }}" stroke-width="{{ hatch_w }}"><path d="{{ t.hatch }}"/></g>{% endfor %}{% endmacro %}
+<rect width="{{ ws }}" height="{{ hs }}" fill="{{ sheet }}"/><circle cx="{{ moon.0 }}" cy="{{ moon.1 }}" r="{{ moon.2 }}" fill="url(#zht)"/>
+<polygon points="{{ back_hill }}" fill="{{ sheet }}"/><polyline points="{{ back_ridge }}" fill="none" stroke="{{ paper }}" stroke-width="{{ ridge_w }}"/>
+{% for p in back %}{% call pine(p) %}{% endcall %}{% endfor %}
+<polygon points="{{ front_hill }}" fill="{{ sheet }}"/><polyline points="{{ front_ridge }}" fill="none" stroke="{{ paper }}" stroke-width="{{ ridge_w }}"/>
+{% for p in front %}{% call pine(p) %}{% endcall %}{% endfor %}
