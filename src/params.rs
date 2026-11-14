@@ -474,13 +474,15 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             json!({}),
         ));
     }
-    // each park setting once, on a summit park rider
+    // each park setting once, on a summit park rider, and a sway carrying the glint and breath,
+    // whose boxes outreach the outline (so it pins one neck for every sticker copy)
     for park in [
         json!({"pompom": true}),
         json!({"lens_flow": true}),
         json!({"glint": true}),
         json!({"breath": true}),
         json!({"beanie": "#ffd400"}),
+        json!({"rider": {"motion": "SWAY"}, "glint": true, "breath": true}),
     ] {
         out.push(scene(
             json!({"summit": {}}),
@@ -488,12 +490,13 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             json!({}),
         ));
     }
-    // each local setting once, on a summit local
+    // each local setting once, on a summit local, and a sway: the beard hatching outreaches the outline
     for local in [
         json!({"beard_wind": true}),
         json!({"frost": true}),
         json!({"glint": true}),
         json!({"breath": true}),
+        json!({"rider": {"motion": "SWAY"}}),
     ] {
         out.push(scene(
             json!({"summit": {}}),
@@ -701,7 +704,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 145);
+        assert_eq!(cfgs.len(), 147);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#
