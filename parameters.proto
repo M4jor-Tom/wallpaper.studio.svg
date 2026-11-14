@@ -52,6 +52,7 @@ message Icon {
     Ship    ship    = 2;
     Punk    punk    = 3;
     Park    park    = 4;
+    Local   local   = 5;
   }
 }
 message Hexatri {
@@ -85,6 +86,13 @@ message Park {
   bool glint = 4;      // a paper bar crosses the lens every 4 beats
   bool breath = 5;     // three puffs rise from the gaiter every 2 beats
   string beanie = 6;   // #rrggbb; empty = follow zine.spot
+}
+message Local {
+  Rider rider = 1;
+  bool beard_wind = 2;  // the five locks flick one after another, every beat
+  bool frost = 3;       // the frost crosses twinkle, every 2 beats
+  bool glint = 4;       // a paper bar crosses the wraparounds every 4 beats
+  bool breath = 5;      // three puffs rise from the beard every 2 beats
 }
 
 message Overlay {

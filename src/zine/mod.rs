@@ -1,5 +1,6 @@
 //! The zine mood: a black print with paper linework and one spot ink.
 pub mod halfpipe;
+pub mod local;
 pub mod park;
 pub mod print;
 pub mod punk;
@@ -13,7 +14,7 @@ use askama::Template;
 
 use crate::geom::fmt;
 use crate::params::rider::Motion;
-use crate::params::{Glyph, ParkLook, PunkLook};
+use crate::params::{Glyph, LocalLook, ParkLook, PunkLook};
 use style::{RAINBOW, shade};
 
 /// The spot halftone every zine disc is filled with.
@@ -52,7 +53,9 @@ pub fn css(glyph: &Glyph) -> String {
     )
     .to_string();
     let rig = match glyph {
-        Glyph::Punk(PunkLook { rig, .. }) | Glyph::Park(ParkLook { rig, .. }) => Some(rig),
+        Glyph::Punk(PunkLook { rig, .. })
+        | Glyph::Park(ParkLook { rig, .. })
+        | Glyph::Local(LocalLook { rig, .. }) => Some(rig),
         _ => None,
     };
     if let Some(rig) = rig {
@@ -104,6 +107,9 @@ pub fn css(glyph: &Glyph) -> String {
     if let Glyph::Park(p) = glyph {
         park_css(p, &mut out);
     }
+    if let Glyph::Local(l) = glyph {
+        local_css(l, &mut out);
+    }
     out.push_str("@media (prefers-reduced-motion:reduce){*{animation:none!important}}");
     out
 }
@@ -125,15 +131,42 @@ fn park_css(p: &ParkLook, out: &mut String) {
         ));
         out.push_str(&cycle("zlensflow", "stop-color", RAINBOW.map(String::from)));
     }
-    // the glint and the puffs rest at opacity 0 in the markup; only these keyframes raise it
-    if p.glint {
+    glint_and_breath(p.glint, p.breath, out);
+}
+
+/// The mountain local's animations, each only when on, on the rider's `--beat`.
+fn local_css(l: &LocalLook, out: &mut String) {
+    if l.beard_wind {
+        // each lock flicks about its root, .18 of a beat behind the one before
+        out.push_str(concat!(
+            ".zlock{transform-box:fill-box;transform-origin:50% 0;",
+            "animation:zlock var(--beat) ease-in-out infinite;",
+            "animation-delay:calc(var(--i)*var(--beat)*-.18)}",
+            "@keyframes zlock{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}",
+        ));
+    }
+    if l.frost {
+        out.push_str(concat!(
+            ".zfrost{transform-box:fill-box;transform-origin:center;",
+            "animation:zfrost calc(var(--beat)*2) ease-in-out infinite;",
+            "animation-delay:calc(var(--i)*var(--beat)*-.29)}",
+            "@keyframes zfrost{0%,100%{transform:scale(.4);opacity:.4}50%{transform:scale(1.4);opacity:1}}",
+        ));
+    }
+    glint_and_breath(l.glint, l.breath, out);
+}
+
+/// Shared by the park rider and the local. They rest at opacity 0 in the markup; only these
+/// keyframes raise them.
+fn glint_and_breath(glint: bool, breath: bool, out: &mut String) {
+    if glint {
         out.push_str(concat!(
             ".zgl{animation:zglint calc(var(--beat)*4) ease-in-out infinite}",
             "@keyframes zglint{0%,55%{transform:translateX(0);opacity:0}",
             "62%{opacity:1}100%{transform:translateX(130px);opacity:0}}",
         ));
     }
-    if p.breath {
+    if breath {
         out.push_str(concat!(
             ".zbreath{animation:zpuff calc(var(--beat)*2) ease-out infinite}",
             "@keyframes zpuff{0%{opacity:0;transform:translate(-6px,4px)}30%{opacity:1}",

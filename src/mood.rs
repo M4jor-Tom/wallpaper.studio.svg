@@ -30,6 +30,7 @@ pub const MOODS: &[(&str, &[Mood])] = &[
     ("icon.ship", &[Mood::Blueprint]),
     ("icon.punk", &[Mood::Zine]),
     ("icon.park", &[Mood::Zine]),
+    ("icon.local", &[Mood::Zine]),
     ("overlay.matrix", &[Mood::Blueprint]),
     ("zine", &[Mood::Zine]), // the mood-wide settings block
 ];

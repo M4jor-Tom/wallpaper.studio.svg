@@ -25,6 +25,7 @@ pub enum Glyph {
     Ship,
     Punk(PunkLook),
     Park(ParkLook),
+    Local(LocalLook),
 }
 
 /// A zine head's gear and how it turns, and how the head moves to the beat.
@@ -73,6 +74,17 @@ pub struct ParkLook {
     pub beanie: String,
 }
 
+/// The mountain local's rig and which parts of its head move. Not `Local`: that is the config
+/// message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocalLook {
+    pub rig: Rig,
+    pub beard_wind: bool,
+    pub frost: bool,
+    pub glint: bool,
+    pub breath: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ground {
     Trihex {
@@ -116,7 +128,7 @@ impl Scene {
         };
         let glyph = match self.glyph {
             Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
-            Glyph::Punk(_) | Glyph::Park(_) => Mood::Zine,
+            Glyph::Punk(_) | Glyph::Park(_) | Glyph::Local(_) => Mood::Zine,
         };
         let overlay = self.overlay.as_ref().map(|Rain { .. }| Mood::Blueprint);
         [Some(ground), Some(glyph), overlay].contains(&Some(mood))
@@ -138,6 +150,11 @@ impl Scene {
                 ..
             }) => ("still", "park"),
             Glyph::Park(_) => ("spin", "park"),
+            Glyph::Local(LocalLook {
+                rig: Rig { rpm: 0, .. },
+                ..
+            }) => ("still", "local"),
+            Glyph::Local(_) => ("spin", "local"),
         };
         let overlay = if self.overlay.is_some() {
             "matrix"
@@ -222,6 +239,13 @@ pub fn resolve(p: &Parameters) -> Scene {
                 b => hex_rgb(b).expect("validate() already accepted icon.park.beanie"),
             },
         }),
+        Some(icon::Glyph::Local(k)) => Glyph::Local(LocalLook {
+            rig: rig_of(k.rider.as_ref()),
+            beard_wind: k.beard_wind,
+            frost: k.frost,
+            glint: k.glint,
+            breath: k.breath,
+        }),
         None => Glyph::Hexatri { rotate: true },
     };
     let overlay =
@@ -282,6 +306,7 @@ pub fn validate(p: &Parameters) -> Result<(), Error> {
             }
             Some(("icon.park", k.rider.as_ref()))
         }
+        Some(icon::Glyph::Local(k)) => Some(("icon.local", k.rider.as_ref())),
         _ => None,
     };
     if let Some((at, rider)) = rider {
@@ -393,6 +418,7 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             json!({"ship": {}}),
             json!({"punk": {}}),
             json!({"park": {}}),
+            json!({"local": {}}),
         ] {
             for overlay in [
                 json!({}),
@@ -661,7 +687,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 121);
+        assert_eq!(cfgs.len(), 141);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#

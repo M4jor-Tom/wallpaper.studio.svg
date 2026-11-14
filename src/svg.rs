@@ -14,7 +14,7 @@ use crate::zine::halfpipe::halfpipe;
 use crate::zine::print::Frame;
 use crate::zine::summit::summit;
 use crate::zine::treeline::treeline;
-use crate::zine::{park, punk, rider};
+use crate::zine::{local, park, punk, rider};
 
 /// `bg` is `userSpaceOnUse` so any shape can paint canvas: `objectBoundingBox` would squeeze the ramp
 /// into one hexagon, and a shut CLOSEOPEN blind would show as a patch.
@@ -163,6 +163,11 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
             in_print,
             None,
         ),
+        Glyph::Local(l) => (
+            rider::icon(&scene.spot, &l.rig, &local::head(&scene.spot, l)),
+            in_print,
+            None,
+        ),
     };
 
     let mut label = match scene.ground {
@@ -180,6 +185,7 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
         }
         Glyph::Punk(p) => Some((" with a punk head with a rainbow mohawk", p.rig)),
         Glyph::Park(p) => Some((" with a snowboarder in a beanie and goggles", p.rig)),
+        Glyph::Local(l) => Some((" with a bearded mountain local", l.rig)),
     };
     if let Some((who, Rig { gear, rpm, .. })) = rider {
         label.push_str(who);
