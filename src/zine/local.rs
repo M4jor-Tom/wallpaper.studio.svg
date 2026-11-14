@@ -41,15 +41,27 @@ struct Local<'a> {
     spot: &'a str,
     beard: &'static str,
     wraps: &'static str,
-    locks: &'a [&'static str],
-    frost: &'a [&'static str],
+    /// each lock's path and its `--i`
+    locks: &'a [(&'static str, String)],
+    /// each cross's path and its `--i`
+    frost: &'a [(&'static str, String)],
     /// the cap band's 12 ribs
     ribs: &'a [String],
     /// the beard's 23 diagonal hatch lines: where each meets x = 0 and x = 56
     hatch: &'a [(String, String)],
 }
 
+/// Each path with its `--i:k`, the offset its animation is delayed by.
+fn indexed(paths: &[&'static str]) -> Vec<(&'static str, String)> {
+    paths
+        .iter()
+        .enumerate()
+        .map(|(k, &d)| (d, format!("--i:{k}")))
+        .collect()
+}
+
 pub fn head(spot: &str, l: &LocalLook) -> Sticker {
+    let (locks, frost) = (indexed(&LOCKS), indexed(&FROST));
     let ribs: Vec<_> = (0..12).map(|k| fmt(-40.0 + 7.0 * k as f64)).collect();
     let hatch: Vec<_> = (0..23)
         .map(|k| {
@@ -67,8 +79,8 @@ pub fn head(spot: &str, l: &LocalLook) -> Sticker {
             spot,
             beard: BEARD,
             wraps: WRAPS,
-            locks: &LOCKS,
-            frost: &FROST,
+            locks: &locks,
+            frost: &frost,
             ribs: &ribs,
             hatch: &hatch,
         }
