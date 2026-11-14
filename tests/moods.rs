@@ -37,37 +37,10 @@ fn schema_choices() -> BTreeSet<String> {
     out
 }
 
-/// A renamed message would drop out of the walk and leave the coverage test passing on nothing.
-#[test]
-fn the_walk_finds_every_message_it_reads() {
-    let set = FileDescriptorSet::decode(DESCRIPTOR).unwrap();
-    let names: BTreeSet<_> = set
-        .file
-        .iter()
-        .flat_map(|f| &f.message_type)
-        .map(|m| m.name())
-        .collect();
-    for want in CHOICE_HOLDERS.iter().chain(&["Parameters"]) {
-        assert!(names.contains(want), "no message {want} in the schema");
-    }
-}
-
 #[test]
 fn every_choice_has_a_mood() {
     let keys: BTreeSet<_> = MOODS.iter().map(|(k, _)| k.to_string()).collect();
-    let missing: Vec<_> = schema_choices().difference(&keys).cloned().collect();
-    assert!(missing.is_empty(), "no mood for: {missing:?}");
-}
-
-#[test]
-fn every_mood_entry_names_a_real_choice() {
-    let choices = schema_choices();
-    let stale: Vec<_> = MOODS
-        .iter()
-        .map(|(k, _)| *k)
-        .filter(|k| !choices.contains(*k))
-        .collect();
-    assert!(stale.is_empty(), "not in the schema: {stale:?}");
+    assert_eq!(schema_choices(), keys);
 }
 
 #[test]

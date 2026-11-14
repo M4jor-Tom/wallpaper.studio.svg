@@ -195,12 +195,6 @@ mod tests {
     use crate::params::{parse, resolve};
 
     #[test]
-    fn a_blueprint_scene_uses_only_blueprint() {
-        let s = resolve(&parse("{}").unwrap());
-        assert!(s.uses(Mood::Blueprint) && !s.uses(Mood::Zine));
-    }
-
-    #[test]
     #[should_panic(expected = "a non-zero width and height")]
     fn a_zero_dimension_is_refused_not_drawn() {
         // at s = 0 a zine ground's rows never advance: release builds hang

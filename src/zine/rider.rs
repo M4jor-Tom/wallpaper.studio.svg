@@ -85,20 +85,10 @@ pub fn icon(spot: &str, rig: &Rig, head: &Sticker) -> String {
 mod tests {
     use super::*;
     use crate::params::rider::Motion;
-    use crate::params::{Glyph, PunkLook, parse, resolve};
+    use crate::params::{Glyph, PunkLook, glyph, parse, resolve};
     use crate::zine::punk;
     use crate::zine::style::SPOT;
     use serde_json::json;
-
-    fn still(rig: Rig) -> PunkLook {
-        PunkLook {
-            rig,
-            crest_wave: false,
-            rainbow_flow: false,
-            chatter: false,
-            eye_pop: false,
-        }
-    }
 
     fn draw(gear: Gear, ccw: bool, rpm: u32) -> String {
         let rig = Rig {
@@ -108,13 +98,15 @@ mod tests {
             motion: Motion::Still,
             bpm: 96,
         };
-        icon(SPOT, &rig, &punk::head(&still(rig)))
+        rendered(&PunkLook {
+            rig,
+            ..punk_of(json!({}))
+        })
     }
 
     /// The punk a config resolves to.
     fn punk_of(punk: serde_json::Value) -> PunkLook {
-        let cfg = json!({"icon": {"punk": punk}}).to_string();
-        let Glyph::Punk(p) = resolve(&parse(&cfg).unwrap()).glyph else {
+        let Glyph::Punk(p) = glyph(json!({ "punk": punk })) else {
             panic!("not a punk")
         };
         p

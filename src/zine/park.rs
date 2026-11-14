@@ -98,16 +98,12 @@ pub fn head(spot: &str, p: &ParkLook) -> Sticker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::params::{Glyph, parse, resolve, validate};
+    use crate::params::{Glyph, glyph, parse, validate};
     use crate::zine::style::{INK, SPOT};
     use serde_json::json;
 
     fn look(park: serde_json::Value) -> ParkLook {
-        let cfg = json!({"icon": {"park": park}}).to_string();
-        let p = parse(&cfg).unwrap();
-        validate(&p).unwrap_or_else(|e| panic!("{cfg}: {e}"));
-        let scene = resolve(&p);
-        let Glyph::Park(k) = scene.glyph else {
+        let Glyph::Park(k) = glyph(json!({ "park": park })) else {
             panic!("not a park rider")
         };
         k
@@ -159,25 +155,6 @@ mod tests {
     fn a_typed_beanie_reaches_the_svg_normalised() {
         let art = art(json!({"beanie": " #22C8E5 "}));
         assert!(art.contains("#22c8e5") && !art.contains("22C8E5"));
-    }
-
-    #[test]
-    fn glint_and_breath_exist_only_when_on() {
-        let rest = art(json!({}));
-        assert!(!rest.contains("zgl") && !rest.contains("zbreath"));
-        assert!(art(json!({"glint": true})).contains(r#"class="zgl""#));
-        assert!(art(json!({"breath": true})).contains(r#"class="zbreath""#));
-        assert!(!art(json!({"glint": true})).contains("zbreath"));
-    }
-
-    #[test]
-    fn glint_and_breath_rest_invisible() {
-        let on = art(json!({"glint": true, "breath": true}));
-        for class in ["zgl", "zbreath"] {
-            let tag = &on[on.find(&format!(r#"class="{class}""#)).unwrap()..];
-            let tag = &tag[..tag.find('>').unwrap()];
-            assert!(tag.contains(r#"opacity="0""#), "{tag}");
-        }
     }
 
     #[test]

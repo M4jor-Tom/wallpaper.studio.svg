@@ -204,23 +204,14 @@ pub fn head(p: &PunkLook) -> Sticker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::params::rider::{Gear, Motion};
-    use crate::params::{PunkLook, Rig};
+    use crate::params::{Glyph, PunkLook, glyph};
+    use serde_json::json;
 
     fn still() -> PunkLook {
-        PunkLook {
-            rig: Rig {
-                gear: Gear::Board,
-                ccw: false,
-                rpm: 8,
-                motion: Motion::Still,
-                bpm: 96,
-            },
-            crest_wave: false,
-            rainbow_flow: false,
-            chatter: false,
-            eye_pop: false,
-        }
+        let Glyph::Punk(p) = glyph(json!({"punk": {}})) else {
+            panic!("not a punk")
+        };
+        p
     }
 
     /// The markup of spike `k`, up to the end of its group.

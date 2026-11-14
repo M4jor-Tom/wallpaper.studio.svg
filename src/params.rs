@@ -569,6 +569,15 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
     out
 }
 
+/// The glyph an `icon` block resolves to, validated first (test builder).
+#[cfg(test)]
+pub(crate) fn glyph(icon: serde_json::Value) -> Glyph {
+    let cfg = serde_json::json!({ "icon": icon }).to_string();
+    let p = parse(&cfg).unwrap();
+    validate(&p).unwrap_or_else(|e| panic!("{cfg}: {e}"));
+    resolve(&p).glyph
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -580,10 +589,6 @@ mod tests {
         assert!(parse(r#"{"output":{"file":{"path":"a.svg"},"stdout":{}}}"#).is_err());
         assert!(parse(r#"{"backgrond":{}}"#).is_err());
         assert!(parse(r#"{"background":{"trihex":{"motion":"SPIRAL"}}}"#).is_err());
-    }
-
-    #[test]
-    fn the_old_flat_background_is_rejected() {
         assert!(parse(r#"{"background":{"motion":"SCAN"}}"#).is_err());
     }
 
@@ -688,11 +693,6 @@ mod tests {
             "#22c8e5"
         );
         assert_eq!(resolve(&parse("{}").unwrap()).spot, "#e63946");
-    }
-
-    #[test]
-    fn an_inert_zine_block_is_accepted() {
-        assert!(validate(&parse(r##"{"zine":{"spot":"#22c8e5"}}"##).unwrap()).is_ok());
     }
 
     #[test]

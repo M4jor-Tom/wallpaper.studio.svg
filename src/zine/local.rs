@@ -97,15 +97,12 @@ pub fn head(spot: &str, l: &LocalLook) -> Sticker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::params::{Glyph, parse, resolve, validate};
+    use crate::params::{Glyph, glyph};
     use crate::zine::style::SPOT;
     use serde_json::json;
 
     fn look(local: serde_json::Value) -> LocalLook {
-        let cfg = json!({"icon": {"local": local}}).to_string();
-        let p = parse(&cfg).unwrap();
-        validate(&p).unwrap_or_else(|e| panic!("{cfg}: {e}"));
-        let Glyph::Local(k) = resolve(&p).glyph else {
+        let Glyph::Local(k) = glyph(json!({ "local": local })) else {
             panic!("not a local")
         };
         k
