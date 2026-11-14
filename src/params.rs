@@ -493,9 +493,7 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             );
         }
     }
-    grounds.push(json!({"summit": {}}));
-    grounds.push(json!({"treeline": {}}));
-    grounds.push(json!({"halfpipe": {}}));
+    grounds.extend(["summit", "treeline", "halfpipe"].map(|g| json!({g: {}})));
 
     let scene = |background, icon, overlay| json!({"seed": seed, "background": background, "icon": icon, "overlay": overlay});
     let mut out = Vec::new();
@@ -516,80 +514,57 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             }
         }
     }
-    // Each summit setting once, on the default icon: crossing it with
-    // every icon and overlay would add renders, not code paths.
-    let hexatri = || json!({"hexatri": {"motion": "ROTATE"}});
-    for snow in ["NO_SNOW", "BLIZZARD"] {
-        out.push(scene(
-            json!({"summit": {"snow": snow}}),
-            hexatri(),
-            json!({}),
-        ));
-    }
-    out.push(scene(
-        json!({"treeline": {"snow": "BLIZZARD"}}),
-        hexatri(),
+    // Each zine setting once, over a summit under the default icon: crossing it with every icon
+    // and overlay would add renders, not code paths. A row replaces the base's keys it names.
+    let base = scene(
+        json!({"summit": {}}),
+        json!({"hexatri": {"motion": "ROTATE"}}),
         json!({}),
-    ));
-    out.push(scene(
-        json!({"halfpipe": {"snow": "BLIZZARD"}}),
-        hexatri(),
-        json!({}),
-    ));
-    let mut spot = scene(json!({"summit": {}}), hexatri(), json!({}));
-    spot["zine"] = json!({"spot": "#22c8e5"});
-    out.push(spot);
-    // each rider and punk setting once, on a summit punk; reverse on a still gear, or a bpm with
-    // nothing moving to it, would repeat a picture
+    );
+    let icon = |name: &str, look| json!({"icon": {name: look}});
     let rider = |rider| json!({"rider": rider});
-    for punk in [
-        rider(json!({"gear": "CROSSED_SKIS"})),
-        rider(json!({"counter_clockwise": true})),
-        rider(json!({"spin_rpm": 0})),
-        rider(json!({"spin_rpm": 20})),
-        rider(json!({"motion": "BOB"})),
-        rider(json!({"motion": "SWAY"})),
-        rider(json!({"motion": "BOB", "bpm": 150})),
-        json!({"crest_wave": true}),
-        json!({"rainbow_flow": true}),
-        json!({"chatter": true}),
-        json!({"eyes": "POP"}),
-    ] {
-        out.push(scene(
-            json!({"summit": {}}),
-            json!({"punk": punk}),
-            json!({}),
-        ));
-    }
-    // each park setting once, on a summit park rider, and a sway carrying the glint and breath,
-    // whose boxes outreach the outline (so it pins one neck for every sticker copy)
-    for park in [
-        json!({"pompom": true}),
-        json!({"lens_flow": true}),
-        json!({"glint": true}),
-        json!({"breath": true}),
-        json!({"beanie": "#ffd400"}),
-        json!({"rider": {"motion": "SWAY"}, "glint": true, "breath": true}),
-    ] {
-        out.push(scene(
-            json!({"summit": {}}),
-            json!({"park": park}),
-            json!({}),
-        ));
-    }
-    // each local setting once, on a summit local, and a sway: the beard hatching outreaches the outline
-    for local in [
-        json!({"beard_wind": true}),
-        json!({"frost": true}),
-        json!({"glint": true}),
-        json!({"breath": true}),
-        json!({"rider": {"motion": "SWAY"}}),
-    ] {
-        out.push(scene(
-            json!({"summit": {}}),
-            json!({"local": local}),
-            json!({}),
-        ));
+    let rows = [
+        json!({"background": {"summit": {"snow": "NO_SNOW"}}}),
+        json!({"background": {"summit": {"snow": "BLIZZARD"}}}),
+        json!({"background": {"treeline": {"snow": "BLIZZARD"}}}),
+        json!({"background": {"halfpipe": {"snow": "BLIZZARD"}}}),
+        json!({"zine": {"spot": "#22c8e5"}}),
+        // reverse on a still gear, or a bpm with nothing moving to it, would repeat a picture
+        icon("punk", rider(json!({"gear": "CROSSED_SKIS"}))),
+        icon("punk", rider(json!({"counter_clockwise": true}))),
+        icon("punk", rider(json!({"spin_rpm": 0}))),
+        icon("punk", rider(json!({"spin_rpm": 20}))),
+        icon("punk", rider(json!({"motion": "BOB"}))),
+        icon("punk", rider(json!({"motion": "SWAY"}))),
+        icon("punk", rider(json!({"motion": "BOB", "bpm": 150}))),
+        icon("punk", json!({"crest_wave": true})),
+        icon("punk", json!({"rainbow_flow": true})),
+        icon("punk", json!({"chatter": true})),
+        icon("punk", json!({"eyes": "POP"})),
+        icon("park", json!({"pompom": true})),
+        icon("park", json!({"lens_flow": true})),
+        icon("park", json!({"glint": true})),
+        icon("park", json!({"breath": true})),
+        icon("park", json!({"beanie": "#ffd400"})),
+        // a sway carrying the glint and breath, whose boxes outreach the outline, so it pins one
+        // neck for every sticker copy
+        icon(
+            "park",
+            json!({"rider": {"motion": "SWAY"}, "glint": true, "breath": true}),
+        ),
+        icon("local", json!({"beard_wind": true})),
+        icon("local", json!({"frost": true})),
+        icon("local", json!({"glint": true})),
+        icon("local", json!({"breath": true})),
+        // the beard hatching outreaches the outline too
+        icon("local", rider(json!({"motion": "SWAY"}))),
+    ];
+    for row in rows {
+        let mut cfg = base.clone();
+        for (key, value) in row.as_object().expect("a row is an object") {
+            cfg[key] = value.clone();
+        }
+        out.push(cfg);
     }
     out
 }
