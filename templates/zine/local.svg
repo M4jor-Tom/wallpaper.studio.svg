@@ -1,3 +1,4 @@
+{% import "zine/fx.svg" as shared %}
 {% if paint %}<defs><clipPath id="zlbc"><path d="{{ beard }}"/></clipPath><clipPath id="zlgc"><path d="{{ wraps }}"/></clipPath></defs>{% endif %}
 <circle cy="8" r="46"{% if paint +%} fill="{{ paper }}" stroke="{{ ink }}" stroke-width="3"{% endif %}/>
 <path d="M-46 -20 C -46 -54 46 -54 46 -20 Z"{% if paint +%} fill="{{ ink }}" stroke="{{ paper }}" stroke-width="2.4"{% endif %}/>
@@ -5,7 +6,7 @@
 {% if paint %}<g stroke="{{ ink }}" stroke-width="1.4" stroke-opacity=".5">{% for x in ribs %}<line x1="{{ x }}" y1="-35" x2="{{ x }}" y2="-21"/>{% endfor %}</g>{% endif %}
 <path d="{{ wraps }}"{% if paint +%} fill="{{ ink }}"{% endif %}/>
 {% if paint %}<path d="M-40 -6 Q -20 -10 -10 -6" fill="none" stroke="{{ spot }}" stroke-width="3" stroke-linecap="round"/><path d="M10 -6 Q 22 -10 40 -6" fill="none" stroke="{{ spot }}" stroke-width="3" stroke-linecap="round"/>
-{% if glint %}<g clip-path="url(#zlgc)"><polygon class="zgl" opacity="0" points="-50,-30 -36,-30 -60,40 -74,40" fill="{{ paper }}" fill-opacity=".75"/></g>{% endif %}
+{{ shared::glint(fx.glint, "zlgc", paper) }}
 <path d="M-7 10 Q -10 26 0 28 Q 10 26 7 10" fill="{{ paper }}" stroke="{{ ink }}" stroke-width="2.4" stroke-linejoin="round"/>{% endif %}
 {% for l in locks %}<g class="zlock" style="{{ l.1 }}"><path d="{{ l.0 }}"{% if paint +%} fill="{{ ink }}" stroke="{{ paper }}" stroke-width="2.2" stroke-linejoin="round"{% endif %}/></g>
 {% endfor %}<path d="{{ beard }}"{% if paint +%} fill="{{ ink }}"{% endif %}/>
@@ -14,4 +15,4 @@
 {% for f in frost %}<g class="zfrost" style="{{ f.1 }}"><path d="{{ f.0 }}" stroke="{{ paper }}" stroke-width="1.6"/></g>{% endfor %}
 <path d="M-9 46 Q 0 50 9 46" fill="none" stroke="{{ paper }}" stroke-width="2.2" stroke-linecap="round"/>
 <g><path d="M-28 36 Q -14 26 0 32 Q 14 26 28 36 Q 14 40 0 36 Q -14 40 -28 36 Z" fill="{{ ink }}" stroke="{{ paper }}" stroke-width="2"/><path d="M-19 38 L -16 45 L -13 38 Z" fill="{{ paper }}"/><path d="M-3 38 L 0 48 L 3 38 Z" fill="{{ paper }}"/><path d="M13 38 L 16 45 L 19 38 Z" fill="{{ paper }}"/></g>
-{% if breath %}<g class="zbreath" opacity="0" fill="{{ paper }}"><circle cx="22" cy="44" r="4" fill-opacity=".75"/><circle cx="34" cy="36" r="6.5" fill-opacity=".53"/><circle cx="46" cy="28" r="9" fill-opacity=".31"/></g>{% endif %}{% endif %}
+{{ shared::breath(fx.breath, paper, "22", "44", "34", "36", "46", "28") }}{% endif %}

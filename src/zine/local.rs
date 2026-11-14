@@ -3,7 +3,7 @@
 use askama::Template;
 
 use crate::geom::fmt;
-use crate::params::LocalLook;
+use crate::params::{Fx, LocalLook};
 use crate::zine::rider::Sticker;
 use crate::zine::style::{INK, PAPER};
 
@@ -34,8 +34,7 @@ const FROST: [&str; 6] = [
 #[template(path = "zine/local.svg")]
 struct Local<'a> {
     paint: bool,
-    glint: bool,
-    breath: bool,
+    fx: Fx,
     paper: &'static str,
     ink: &'static str,
     spot: &'a str,
@@ -72,8 +71,7 @@ pub fn head(spot: &str, l: &LocalLook) -> Sticker {
     let draw = |paint| {
         Local {
             paint,
-            glint: l.glint,
-            breath: l.breath,
+            fx: l.fx,
             paper: PAPER,
             ink: INK,
             spot,
@@ -90,7 +88,7 @@ pub fn head(spot: &str, l: &LocalLook) -> Sticker {
     Sticker {
         silhouette: draw(false),
         art: draw(true),
-        beats: l.beard_wind || l.frost || l.glint || l.breath,
+        beats: l.beard_wind || l.frost || l.fx.glint || l.fx.breath,
         // the middle lock's tip, (4, 100)
         neck: 100.0,
     }

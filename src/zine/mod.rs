@@ -14,7 +14,7 @@ use askama::Template;
 
 use crate::geom::fmt;
 use crate::params::rider::Motion;
-use crate::params::{Glyph, LocalLook, ParkLook};
+use crate::params::{Fx, Glyph, LocalLook, ParkLook};
 use style::{RAINBOW, shade};
 
 /// The spot halftone every zine disc is filled with.
@@ -125,7 +125,7 @@ fn park_css(p: &ParkLook, out: &mut String) {
         ));
         out.push_str(&cycle("zlensflow", "stop-color", RAINBOW.map(String::from)));
     }
-    glint_and_breath(p.glint, p.breath, out);
+    fx_css(p.fx, out);
 }
 
 /// The mountain local's animations, each only when on, on the rider's `--beat`.
@@ -147,20 +147,20 @@ fn local_css(l: &LocalLook, out: &mut String) {
             "@keyframes zfrost{0%,100%{transform:scale(.4);opacity:.4}50%{transform:scale(1.4);opacity:1}}",
         ));
     }
-    glint_and_breath(l.glint, l.breath, out);
+    fx_css(l.fx, out);
 }
 
 /// Shared by the park rider and the local. They rest at opacity 0 in the markup; only these
 /// keyframes raise them.
-fn glint_and_breath(glint: bool, breath: bool, out: &mut String) {
-    if glint {
+fn fx_css(fx: Fx, out: &mut String) {
+    if fx.glint {
         out.push_str(concat!(
             ".zgl{animation:zglint calc(var(--beat)*4) ease-in-out infinite}",
             "@keyframes zglint{0%,55%{transform:translateX(0);opacity:0}",
             "62%{opacity:1}100%{transform:translateX(130px);opacity:0}}",
         ));
     }
-    if breath {
+    if fx.breath {
         out.push_str(concat!(
             ".zbreath{animation:zpuff calc(var(--beat)*2) ease-out infinite}",
             "@keyframes zpuff{0%{opacity:0;transform:translate(-6px,4px)}30%{opacity:1}",

@@ -91,6 +91,14 @@ pub struct PunkLook {
     pub eye_pop: bool,
 }
 
+/// The glint across a head's lenses and the breath rising beside it: the park rider and the local
+/// both carry them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Fx {
+    pub glint: bool,
+    pub breath: bool,
+}
+
 /// The park rider's rig, which parts of its head move, and its beanie. Not `Park`: that is the
 /// config message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,8 +106,7 @@ pub struct ParkLook {
     pub rig: Rig,
     pub pompom: bool,
     pub lens_flow: bool,
-    pub glint: bool,
-    pub breath: bool,
+    pub fx: Fx,
     /// lowercase `#rrggbb`, or none to follow `Scene.spot`. Reaches the template verbatim and the
     /// escaper is a no-op, so it must have passed `validate`.
     pub beanie: Option<String>,
@@ -112,8 +119,7 @@ pub struct LocalLook {
     pub rig: Rig,
     pub beard_wind: bool,
     pub frost: bool,
-    pub glint: bool,
-    pub breath: bool,
+    pub fx: Fx,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -273,8 +279,10 @@ fn glyph_of(p: &Parameters) -> Glyph {
             rig: rig_of(k.rider.as_ref()),
             pompom: k.pompom,
             lens_flow: k.lens_flow,
-            glint: k.glint,
-            breath: k.breath,
+            fx: Fx {
+                glint: k.glint,
+                breath: k.breath,
+            },
             beanie: (!k.beanie.is_empty())
                 .then(|| hex_rgb(&k.beanie).expect("validate() already accepted icon.park.beanie")),
         }),
@@ -282,8 +290,10 @@ fn glyph_of(p: &Parameters) -> Glyph {
             rig: rig_of(k.rider.as_ref()),
             beard_wind: k.beard_wind,
             frost: k.frost,
-            glint: k.glint,
-            breath: k.breath,
+            fx: Fx {
+                glint: k.glint,
+                breath: k.breath,
+            },
         }),
         None => Glyph::Hexatri { rotate: true },
     }

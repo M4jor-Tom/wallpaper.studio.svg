@@ -1,0 +1,5 @@
+{# The park rider's and the local's: a paper bar across the lenses, clipped to them, and three puffs
+   rising beside the mouth, smallest first, at each head's own centres. Both rest at opacity 0; only
+   their keyframes raise them. #}
+{% macro glint(on, clip, paper) %}{% if on %}<g clip-path="url(#{{ clip }})"><polygon class="zgl" opacity="0" points="-50,-30 -36,-30 -60,40 -74,40" fill="{{ paper }}" fill-opacity=".75"/></g>{% endif %}{% endmacro %}
+{% macro breath(on, paper, x1, y1, x2, y2, x3, y3) %}{% if on %}<g class="zbreath" opacity="0" fill="{{ paper }}"><circle cx="{{ x1 }}" cy="{{ y1 }}" r="4" fill-opacity=".75"/><circle cx="{{ x2 }}" cy="{{ y2 }}" r="6.5" fill-opacity=".53"/><circle cx="{{ x3 }}" cy="{{ y3 }}" r="9" fill-opacity=".31"/></g>{% endif %}{% endmacro %}

@@ -4,7 +4,7 @@ use std::f64::consts::PI;
 use askama::Template;
 
 use crate::geom::{fmt, pts};
-use crate::params::ParkLook;
+use crate::params::{Fx, ParkLook};
 use crate::zine::rider::Sticker;
 use crate::zine::style::{INK, PAPER, RAINBOW};
 
@@ -21,8 +21,7 @@ struct Stop {
 struct Park<'a> {
     paint: bool,
     lens_flow: bool,
-    glint: bool,
-    breath: bool,
+    fx: Fx,
     paper: &'static str,
     ink: &'static str,
     spot: &'a str,
@@ -73,8 +72,7 @@ pub fn head(spot: &str, p: &ParkLook) -> Sticker {
         Park {
             paint,
             lens_flow: p.lens_flow,
-            glint: p.glint,
-            breath: p.breath,
+            fx: p.fx,
             paper: PAPER,
             ink: INK,
             spot,
@@ -91,7 +89,7 @@ pub fn head(spot: &str, p: &ParkLook) -> Sticker {
     Sticker {
         silhouette: draw(false),
         art: draw(true),
-        beats: p.pompom || p.lens_flow || p.glint || p.breath,
+        beats: p.pompom || p.lens_flow || p.fx.glint || p.fx.breath,
         // the gaiter's foot: its lower edge 68 -> 84 -> 68 bottoms out at 76
         neck: 76.0,
     }
