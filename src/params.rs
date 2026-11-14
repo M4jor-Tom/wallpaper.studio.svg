@@ -487,6 +487,19 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             json!({}),
         ));
     }
+    // each local setting once, on a summit local
+    for local in [
+        json!({"beard_wind": true}),
+        json!({"frost": true}),
+        json!({"glint": true}),
+        json!({"breath": true}),
+    ] {
+        out.push(scene(
+            json!({"summit": {}}),
+            json!({"local": local}),
+            json!({}),
+        ));
+    }
     out
 }
 
@@ -687,7 +700,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 141);
+        assert_eq!(cfgs.len(), 145);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#
