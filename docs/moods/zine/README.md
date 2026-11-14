@@ -126,8 +126,11 @@ All three share the gear, the spin and the beat (`rider`):
 - **Spin:** one turn takes `60 / spin_rpm` s (default 8 rpm); `0` means no animation;
   `counter_clockwise` reverses it.
 - **Head motion:** `BOB` lifts 7 units every beat; `SWAY` rocks ±8° over 2 beats about the
-  neck. It moves the head group only, never the gear. `bpm` is 40–200 (0 = 96) and the
-  beat is `60000 / bpm` ms, kept in milliseconds so 96 bpm is exactly 625 ms.
+  neck, the silhouette's lowest point on the head's axis (punk 64, park 76, local 100): one
+  pivot for shadow, outline and art alike, since each copy's own box differs (the art's
+  reaches past the outline) and would pull the art off its sticker. It moves the head group
+  only, never the gear. `bpm` is 40–200 (0 = 96) and the beat is `60000 / bpm` ms, kept in
+  milliseconds so 96 bpm is exactly 625 ms.
 
 - **`punk`** — a three-quarter head turned 35°, features drawn on the front-view disc and
   wrapped onto a sphere (`Z = √(r² − x² − (y−8)²)`): white cross eyes, a banana grin of
@@ -195,7 +198,11 @@ measurable once both are gone. The summit is slower than the blueprint's worst c
 `CLOSEOPEN` starfield, 27.8 fps in the same batch). Nothing was changed in the crate: this
 records where the cost is. If it ever has to come down, the sunburst is the lever (its 120 s
 period means a slower or paused rotation costs nothing visible), then the snow.
-Treeline has no sunburst, and halfpipe's sits behind the pipe, so neither was measured.
+Treeline has no sunburst and was not measured. The halfpipe was not measured either, but it
+turns the same sunburst: the same 14 wedges reaching the frame's diagonal, on the same 120 s
+`.zrays` rotation. That the pipe covers part of it saves nothing (SVG does no occlusion
+culling, so the wedges are still rasterised across the whole frame), so it likely costs what
+the summit does.
 
 ### The rainbow flow, measured before shipping
 

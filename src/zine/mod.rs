@@ -38,9 +38,10 @@ pub fn defs(spot: &str, s: f64) -> String {
     .expect("writing to a String")
 }
 
-/// Every zine rule the scene uses, and no other: a head animation's rules only when it is on.
-/// Classes and keyframes start with `z`, so they never meet blueprint's. Each animation rests where
-/// it starts, so the closing reduced-motion rule leaves the print intact.
+/// The zine rules. The sunburst's and the snow's ship on every zine page, used or not (a treeline
+/// turns nothing, `NO_SNOW` drops nothing, a trihex ground has neither); a head animation's ship
+/// only when it is on. Classes and keyframes start with `z`, so they never meet blueprint's. Each
+/// animation rests where it starts, so the closing reduced-motion rule leaves the print intact.
 pub fn css(glyph: &Glyph) -> String {
     let mut out = concat!(
         "@keyframes zrot{to{transform:rotate(360deg)}}",
