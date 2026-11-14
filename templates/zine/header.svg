@@ -1,0 +1,1 @@
+<rect width="{{ ws }}" height="{{ hs }}" fill="{{ sheet }}"/>{% if let Some((origin, wedges)) = burst %}<g class="zrays" style="{{ origin }}" fill="{{ rays }}">{% for w in wedges %}<polygon points="{{ w }}"/>{% endfor %}</g>{% endif %}<circle cx="{{ disc.0 }}" cy="{{ disc.1 }}" r="{{ disc.2 }}" fill="url(#zht)"/>

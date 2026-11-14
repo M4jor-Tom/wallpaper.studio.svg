@@ -5,8 +5,8 @@ use std::f64::consts::FRAC_PI_2;
 use askama::Template;
 
 use crate::geom::{fmt, pts};
-use crate::zine::print::{Frame, hatch, sunburst};
-use crate::zine::style::{PAPER, RAYS, SHEET};
+use crate::zine::print::{Frame, hatch, hatch_path, header, seg};
+use crate::zine::style::{PAPER, SHEET};
 
 type P = (f64, f64);
 
@@ -91,19 +91,14 @@ struct Rib {
     width: String,
 }
 
-/// Layering is the template's: sheet, sunburst, disc, wall masks, walls, floor, ribs, lines.
+/// Layering is the template's: header (sheet, sunburst, disc), wall masks, walls, floor, ribs, lines.
 #[derive(Template)]
 #[template(path = "zine/halfpipe.svg")]
 struct Halfpipe<'a> {
-    ws: String,
-    hs: String,
+    header: String,
     sheet: &'static str,
     paper: &'static str,
-    rays: &'static str,
     spot: &'a str,
-    origin: String,
-    wedges: Vec<String>,
-    disc: (String, String, String),
     mask_l: String,
     mask_r: String,
     wall_l: String,
@@ -124,16 +119,10 @@ struct Halfpipe<'a> {
     deck_w: String,
 }
 
-fn seg(a: P, b: P) -> (String, String, String, String) {
-    (fmt(a.0), fmt(a.1), fmt(b.0), fmt(b.1))
-}
-
 /// Sheet, sunburst, disc and pipe: the layer under the rain. Snow is separate (`zine::snow`).
 pub fn halfpipe(f: &Frame, spot: &str) -> String {
     let s = f.s;
     let (near, far) = sections(f);
-    let rays = f.at(320.0, 150.0);
-    let disc = f.at(320.0, 168.0);
     let wall = |side: f64| {
         let mut p = near.quarter(side);
         p.extend(far.quarter(side).into_iter().rev());
@@ -149,10 +138,6 @@ pub fn halfpipe(f: &Frame, spot: &str) -> String {
             (if side < 0.0 { 0.0 } else { f.w }, fl.1 + 30.0 * s),
         ])
     };
-    let hatch = hatch(&wall_l, 5.5 * s)
-        .into_iter()
-        .map(|[(x1, y1), (x2, y2)]| format!("M{} {}L{} {}", fmt(x1), fmt(y1), fmt(x2), fmt(y2)))
-        .collect();
     let floor = [
         near.foot(-1.0),
         near.foot(1.0),
@@ -175,20 +160,15 @@ pub fn halfpipe(f: &Frame, spot: &str) -> String {
         decks.push(seg((n.0, n.1 - 7.0 * s), (fl.0, fl.1 - 3.5 * s)));
     }
     Halfpipe {
-        ws: fmt(f.w),
-        hs: fmt(f.h),
+        header: header(f, Some((320.0, 150.0)), (320.0, 168.0), 132.0),
         sheet: SHEET,
         paper: PAPER,
-        rays: RAYS,
         spot,
-        origin: format!("transform-origin:{}px {}px", fmt(rays.0), fmt(rays.1)),
-        wedges: sunburst(rays, f.w.hypot(f.h)),
-        disc: (fmt(disc.0), fmt(disc.1), fmt(132.0 * s)),
         mask_l: mask(-1.0),
         mask_r: mask(1.0),
         wall_l: pts(&wall_l),
         wall_r: pts(&wall_r),
-        hatch,
+        hatch: hatch_path(hatch(&wall_l, 5.5 * s)),
         hatch_w: fmt(1.3 * s),
         floor: pts(&floor),
         ribs,

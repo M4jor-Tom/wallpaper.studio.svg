@@ -5,7 +5,7 @@ use askama::Template;
 
 use crate::geom::{fmt, pts};
 use crate::rng::PyRandom;
-use crate::zine::print::{Frame, hatch};
+use crate::zine::print::{Frame, hatch, hatch_path, header};
 use crate::zine::style::{PAPER, SHEET};
 
 struct Pine {
@@ -71,7 +71,6 @@ struct Tier {
     id: String,
     tri: String,
     face: String,
-    /// one path of strokes: a wide frame holds hundreds of pines, so a `line` apiece would not stay small
     hatch: String,
 }
 
@@ -95,14 +94,12 @@ fn draw(row: usize, i: usize, p: &Pine, s: f64) -> PineSvg {
                 id: format!("zt{row}_{i}_{k}"),
                 tri: pts(&[(p.x, top), (p.x + hw, bottom), (p.x - hw, bottom)]),
                 face: pts(&face),
-                hatch: hatch(&face, 4.5 * s)
-                    .into_iter()
-                    // `hatch` covers the bounding box; keep the lines that meet the triangle
-                    .filter(|[(_, y), _]| (top..=bottom).contains(y))
-                    .map(|[(x1, y1), (x2, y2)]| {
-                        format!("M{} {}L{} {}", fmt(x1), fmt(y1), fmt(x2), fmt(y2))
-                    })
-                    .collect(),
+                hatch: hatch_path(
+                    hatch(&face, 4.5 * s)
+                        .into_iter()
+                        // `hatch` covers the bounding box; keep the lines that meet the triangle
+                        .filter(|[(_, y), _]| (top..=bottom).contains(y)),
+                ),
             }
         })
         .collect();
@@ -117,16 +114,14 @@ fn draw(row: usize, i: usize, p: &Pine, s: f64) -> PineSvg {
     }
 }
 
-/// Layering is the template's: sheet, moon, back hill, back pines, front hill, front pines.
+/// Layering is the template's: header (sheet, moon), back hill, back pines, front hill, front pines.
 #[derive(Template)]
 #[template(path = "zine/treeline.svg")]
 struct Treeline<'a> {
-    ws: String,
-    hs: String,
+    header: String,
     sheet: &'static str,
     paper: &'static str,
     spot: &'a str,
-    moon: (String, String, String),
     back_hill: String,
     back_ridge: String,
     back: Vec<PineSvg>,
@@ -142,7 +137,6 @@ struct Treeline<'a> {
 pub fn treeline(f: &Frame, seed: u32, spot: &str) -> String {
     let s = f.s;
     let [back, front] = pines(f, seed);
-    let moon = f.at(320.0, 170.0);
     let [back_hill, front_hill] = hills(f).map(|(base, amp, phase)| hill(f, base, amp, phase));
     let rows = |row: usize, ps: &[Pine]| {
         ps.iter()
@@ -151,12 +145,11 @@ pub fn treeline(f: &Frame, seed: u32, spot: &str) -> String {
             .collect()
     };
     Treeline {
-        ws: fmt(f.w),
-        hs: fmt(f.h),
+        // a moon, not a sunburst
+        header: header(f, None, (320.0, 170.0), 132.0),
         sheet: SHEET,
         paper: PAPER,
         spot,
-        moon: (fmt(moon.0), fmt(moon.1), fmt(132.0 * s)),
         back_hill: pts(&back_hill),
         back_ridge: pts(&back_hill[1..back_hill.len() - 1]),
         back: rows(0, &back),

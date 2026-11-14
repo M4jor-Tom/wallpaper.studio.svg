@@ -3,8 +3,8 @@ use askama::Template;
 
 use crate::geom::{fmt, pts};
 use crate::rng::PyRandom;
-use crate::zine::print::{Frame, hatch, sunburst};
-use crate::zine::style::{PAPER, RAYS, SHEET};
+use crate::zine::print::{Frame, hatch, header, seg};
+use crate::zine::style::{PAPER, SHEET};
 
 struct Peak {
     apex: (f64, f64),
@@ -81,25 +81,21 @@ fn draw(i: usize, p: &Peak, s: f64) -> PeakSvg {
         face: pts(&face),
         hatch: hatch(&face, 6.0 * s)
             .into_iter()
-            .map(|[(x1, y1), (x2, y2)]| (fmt(x1), fmt(y1), fmt(x2), fmt(y2)))
+            .map(|[a, b]| seg(a, b))
             .collect(),
         cap: pts(&cap),
     }
 }
 
-/// Layering is the template's: sheet, sunburst, disc, back peaks, ground band, front peaks.
+/// Layering is the template's: header (sheet, sunburst, disc), back peaks, ground band, front peaks.
 #[derive(Template)]
 #[template(path = "zine/summit.svg")]
 struct Summit<'a> {
+    header: String,
     ws: String,
-    hs: String,
     sheet: &'static str,
     paper: &'static str,
-    rays: &'static str,
     spot: &'a str,
-    origin: String,
-    wedges: Vec<String>,
-    disc: (String, String, String),
     back: Vec<PeakSvg>,
     band_y: String,
     band_h: String,
@@ -124,19 +120,12 @@ pub fn summit(f: &Frame, seed: u32, spot: &str) -> String {
         .enumerate()
         .map(|(i, p)| draw(n + i, p, s))
         .collect();
-    let rays = f.at(320.0, 190.0);
-    let disc = f.at(320.0, 180.0);
     Summit {
+        header: header(f, Some((320.0, 190.0)), (320.0, 180.0), 138.0),
         ws: fmt(f.w),
-        hs: fmt(f.h),
         sheet: SHEET,
         paper: PAPER,
-        rays: RAYS,
         spot,
-        origin: format!("transform-origin:{}px {}px", fmt(rays.0), fmt(rays.1)),
-        // the diagonal outreaches every corner, however the wedges turn
-        wedges: sunburst(rays, f.w.hypot(f.h)),
-        disc: (fmt(disc.0), fmt(disc.1), fmt(138.0 * s)),
         back,
         // hides the back row's feet
         band_y: fmt(f.h - 17.0 * s),

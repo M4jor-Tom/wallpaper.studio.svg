@@ -5,6 +5,7 @@ use askama::Template;
 
 use crate::geom::{fmt, pts};
 use crate::params::PunkLook;
+use crate::zine::print::seg;
 use crate::zine::rider::Sticker;
 use crate::zine::style::{HEAD, RAINBOW, WHITE, shade};
 
@@ -168,14 +169,7 @@ pub fn head(p: &PunkLook) -> Sticker {
     let at = |p| wrap(p).0;
     let eyes: Vec<Vec<_>> = eyes()
         .iter()
-        .map(|eye| {
-            eye.iter()
-                .map(|&[a, b]| {
-                    let (a, b) = (at(a), at(b));
-                    (fmt(a.0), fmt(a.1), fmt(b.0), fmt(b.1))
-                })
-                .collect()
-        })
+        .map(|eye| eye.iter().map(|&[a, b]| seg(at(a), at(b))).collect())
         .collect();
     let (upper, lower) = teeth();
     let teeth = |t: &[[Pt; 3]]| -> Vec<String> { t.iter().map(|t| pts(&t.map(at))).collect() };

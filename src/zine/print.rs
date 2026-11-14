@@ -1,7 +1,10 @@
-//! Print geometry shared by every zine item: the frame, hatching and the sunburst.
+//! Print geometry shared by every zine item: the frame, hatching, the sunburst and the header.
 use std::f64::consts::PI;
 
-use crate::geom::pts;
+use askama::Template;
+
+use crate::geom::{fmt, pts};
+use crate::zine::style::{RAYS, SHEET};
 
 /// The mockups' 640x360 canvas mapped onto any frame. Sizes scale by `s`, as the
 /// blueprint scales by `u`; `(cx, cy)` is the head centre.
@@ -52,6 +55,20 @@ pub fn hatch(poly: &[(f64, f64)], spacing: f64) -> Vec<[(f64, f64); 2]> {
         .collect()
 }
 
+/// Hatch lines as one path's data: a wide frame holds hundreds of strokes, so a `line` apiece
+/// would not stay small.
+pub fn hatch_path(lines: impl IntoIterator<Item = [(f64, f64); 2]>) -> String {
+    lines
+        .into_iter()
+        .map(|[(x1, y1), (x2, y2)]| format!("M{} {}L{} {}", fmt(x1), fmt(y1), fmt(x2), fmt(y2)))
+        .collect()
+}
+
+/// A segment's ends, formatted for a `line`'s `x1 y1 x2 y2`.
+pub fn seg(a: (f64, f64), b: (f64, f64)) -> (String, String, String, String) {
+    (fmt(a.0), fmt(a.1), fmt(b.0), fmt(b.1))
+}
+
 /// 14 wedges, the even ones of 28, from `c` out to `reach`.
 pub fn sunburst(c: (f64, f64), reach: f64) -> Vec<String> {
     let ray = |k: usize| {
@@ -62,6 +79,41 @@ pub fn sunburst(c: (f64, f64), reach: f64) -> Vec<String> {
         .step_by(2)
         .map(|k| pts(&[c, ray(k), ray(k + 1)]))
         .collect()
+}
+
+/// The print's backdrop, bottom to top: the sheet, the sunburst turning about its origin (none
+/// under a moon), and the halftone disc.
+#[derive(Template)]
+#[template(path = "zine/header.svg")]
+struct Header {
+    ws: String,
+    hs: String,
+    sheet: &'static str,
+    rays: &'static str,
+    /// the turning origin and the wedges
+    burst: Option<(String, Vec<String>)>,
+    disc: (String, String, String),
+}
+
+/// `rays` and `disc` are mockup points, anchored to the head; `r` is the disc's mockup radius.
+pub fn header(f: &Frame, rays: Option<(f64, f64)>, disc: (f64, f64), r: f64) -> String {
+    let burst = rays.map(|(x, y)| {
+        let c = f.at(x, y);
+        let origin = format!("transform-origin:{}px {}px", fmt(c.0), fmt(c.1));
+        // the diagonal outreaches every corner, however the wedges turn
+        (origin, sunburst(c, f.w.hypot(f.h)))
+    });
+    let disc = f.at(disc.0, disc.1);
+    Header {
+        ws: fmt(f.w),
+        hs: fmt(f.h),
+        sheet: SHEET,
+        rays: RAYS,
+        burst,
+        disc: (fmt(disc.0), fmt(disc.1), fmt(r * f.s)),
+    }
+    .render()
+    .expect("writing to a String")
 }
 
 #[cfg(test)]
