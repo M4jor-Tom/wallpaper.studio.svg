@@ -22,7 +22,8 @@ fn every_valid_config_dispatches_correctly() {
             has("background", "summit")
                 || has("background", "treeline")
                 || has("background", "halfpipe")
-                || has("icon", "punk"),
+                || has("icon", "punk")
+                || has("icon", "park"),
             "{text}"
         );
         assert_eq!(
@@ -90,7 +91,7 @@ fn every_valid_config_dispatches_correctly() {
         );
         n += 1;
     }
-    assert_eq!(n, 96);
+    assert_eq!(n, 116);
 }
 
 #[test]

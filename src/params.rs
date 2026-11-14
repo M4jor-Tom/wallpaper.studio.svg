@@ -24,6 +24,7 @@ pub enum Glyph {
     Hexatri { rotate: bool },
     Ship,
     Punk(PunkLook),
+    Park(ParkLook),
 }
 
 /// A zine head's gear and how it turns, and how the head moves to the beat.
@@ -57,6 +58,19 @@ pub struct PunkLook {
     pub rainbow_flow: bool,
     pub chatter: bool,
     pub eye_pop: bool,
+}
+
+/// The park rider's rig, which parts of its head move, and its beanie. Not `Park`: that is the
+/// config message.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParkLook {
+    pub rig: Rig,
+    pub pompom: bool,
+    pub lens_flow: bool,
+    pub glint: bool,
+    pub breath: bool,
+    /// lowercase `#rrggbb`; `Scene.spot` when the config leaves it empty
+    pub beanie: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,7 +116,7 @@ impl Scene {
         };
         let glyph = match self.glyph {
             Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
-            Glyph::Punk(_) => Mood::Zine,
+            Glyph::Punk(_) | Glyph::Park(_) => Mood::Zine,
         };
         let overlay = self.overlay.as_ref().map(|Rain { .. }| Mood::Blueprint);
         [Some(ground), Some(glyph), overlay].contains(&Some(mood))
@@ -119,6 +133,11 @@ impl Scene {
                 ..
             }) => ("still", "punk"),
             Glyph::Punk(_) => ("spin", "punk"),
+            Glyph::Park(ParkLook {
+                rig: Rig { rpm: 0, .. },
+                ..
+            }) => ("still", "park"),
+            Glyph::Park(_) => ("spin", "park"),
         };
         let overlay = if self.overlay.is_some() {
             "matrix"
@@ -176,6 +195,10 @@ fn spot_of(p: &Parameters) -> &str {
 }
 
 pub fn resolve(p: &Parameters) -> Scene {
+    let spot = match spot_of(p) {
+        "" => SPOT.to_string(),
+        s => hex_rgb(s).expect("validate() already accepted zine.spot"),
+    };
     let glyph = match p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
         Some(icon::Glyph::Ship(_)) => Glyph::Ship,
         Some(icon::Glyph::Hexatri(h)) => Glyph::Hexatri {
@@ -187,6 +210,17 @@ pub fn resolve(p: &Parameters) -> Scene {
             rainbow_flow: p.rainbow_flow,
             chatter: p.chatter,
             eye_pop: p.eyes() == punk::Eyes::Pop,
+        }),
+        Some(icon::Glyph::Park(k)) => Glyph::Park(ParkLook {
+            rig: rig_of(k.rider.as_ref()),
+            pompom: k.pompom,
+            lens_flow: k.lens_flow,
+            glint: k.glint,
+            breath: k.breath,
+            beanie: match k.beanie.as_str() {
+                "" => spot.clone(),
+                b => hex_rgb(b).expect("validate() already accepted icon.park.beanie"),
+            },
         }),
         None => Glyph::Hexatri { rotate: true },
     };
@@ -202,10 +236,6 @@ pub fn resolve(p: &Parameters) -> Scene {
                     m.color.clone()
                 },
             });
-    let spot = match spot_of(p) {
-        "" => SPOT.to_string(),
-        s => hex_rgb(s).expect("validate() already accepted zine.spot"),
-    };
     Scene {
         seed: p.seed,
         ground: ground_of(p),
@@ -244,17 +274,27 @@ pub fn validate(p: &Parameters) -> Result<(), Error> {
         };
         hex_rgba(color).map_err(|e| Error::Invalid(format!("overlay.matrix.color: {e}")))?;
     }
-    if let Some(icon::Glyph::Punk(punk)) = p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
-        let Rig { rpm, bpm, .. } = rig_of(punk.rider.as_ref());
+    let rider = match p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
+        Some(icon::Glyph::Punk(k)) => Some(("icon.punk", k.rider.as_ref())),
+        Some(icon::Glyph::Park(k)) => {
+            if !k.beanie.is_empty() {
+                hex_rgb(&k.beanie).map_err(|e| Error::Invalid(format!("icon.park.beanie: {e}")))?;
+            }
+            Some(("icon.park", k.rider.as_ref()))
+        }
+        _ => None,
+    };
+    if let Some((at, rider)) = rider {
+        let Rig { rpm, bpm, .. } = rig_of(rider);
         if rpm > 30 {
             return Err(Error::Invalid(format!(
-                "icon.punk.rider.spin_rpm: {rpm} is above 30 (turns a minute; 0 = still)"
+                "{at}.rider.spin_rpm: {rpm} is above 30 (turns a minute; 0 = still)"
             )));
         }
         // 0 resolved to 96 above, so it passes
         if !(40..=200).contains(&bpm) {
             return Err(Error::Invalid(format!(
-                "icon.punk.rider.bpm: {bpm} is outside 40-200 (beats a minute; 0 = 96)"
+                "{at}.rider.bpm: {bpm} is outside 40-200 (beats a minute; 0 = 96)"
             )));
         }
     }
@@ -352,6 +392,7 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             json!({"hexatri": {"motion": "STATIC"}}),
             json!({"ship": {}}),
             json!({"punk": {}}),
+            json!({"park": {}}),
         ] {
             for overlay in [
                 json!({}),
@@ -606,7 +647,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 96);
+        assert_eq!(cfgs.len(), 116);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#

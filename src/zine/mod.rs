@@ -1,5 +1,6 @@
 //! The zine mood: a black print with paper linework and one spot ink.
 pub mod halfpipe;
+pub mod park;
 pub mod print;
 pub mod punk;
 pub mod rider;
@@ -11,8 +12,8 @@ pub mod treeline;
 use askama::Template;
 
 use crate::geom::fmt;
-use crate::params::Glyph;
 use crate::params::rider::Motion;
+use crate::params::{Glyph, ParkLook, PunkLook};
 use style::{RAINBOW, shade};
 
 /// The spot halftone every zine disc is filled with.
@@ -50,13 +51,17 @@ pub fn css(glyph: &Glyph) -> String {
         ".zblizzard{animation:zfall 6s linear infinite}",
     )
     .to_string();
-    if let Glyph::Punk(p) = glyph {
+    let rig = match glyph {
+        Glyph::Punk(PunkLook { rig, .. }) | Glyph::Park(ParkLook { rig, .. }) => Some(rig),
+        _ => None,
+    };
+    if let Some(rig) = rig {
         // duration and direction are inline: they follow the rider's rpm
         out.push_str(
             ".zspin{transform-box:fill-box;transform-origin:center;animation:zrot linear infinite}",
         );
         // every head animation runs on the rider's inline --beat
-        out.push_str(match p.rig.motion {
+        out.push_str(match rig.motion {
             Motion::Still => "",
             Motion::Bob => concat!(
                 ".zbob{animation:zbob var(--beat) ease-in-out infinite}",
@@ -69,6 +74,8 @@ pub fn css(glyph: &Glyph) -> String {
                 "@keyframes zsway{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}",
             ),
         });
+    }
+    if let Glyph::Punk(p) = glyph {
         if p.crest_wave {
             out.push_str(concat!(
                 ".zwave .zsp{transform-box:fill-box;transform-origin:50% 100%;",
@@ -94,8 +101,59 @@ pub fn css(glyph: &Glyph) -> String {
             ));
         }
     }
+    if let Glyph::Park(p) = glyph {
+        park_css(p, &mut out);
+    }
     out.push_str("@media (prefers-reduced-motion:reduce){*{animation:none!important}}");
     out
+}
+
+/// The park rider's animations, each only when on. All of them run on the rider's `--beat`.
+fn park_css(p: &ParkLook, out: &mut String) {
+    if p.pompom {
+        out.push_str(concat!(
+            ".zpom{transform-box:fill-box;transform-origin:50% 100%;",
+            "animation:zpom var(--beat) ease-in-out infinite}",
+            "@keyframes zpom{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(16deg)}}",
+        ));
+    }
+    if p.lens_flow {
+        // the lens gradient's stops, not a filter: each runs a seventh of the cycle behind the last
+        out.push_str(concat!(
+            ".zlensflow stop{animation:zlensflow calc(var(--beat)*8) linear infinite;",
+            "animation-delay:calc(var(--i)*var(--beat)*-8/7)}",
+        ));
+        out.push_str(&cycle("zlensflow", "stop-color", RAINBOW.map(String::from)));
+    }
+    // the glint and the puffs rest at opacity 0 in the markup; only these keyframes raise it
+    if p.glint {
+        out.push_str(concat!(
+            ".zgl{animation:zglint calc(var(--beat)*4) ease-in-out infinite}",
+            "@keyframes zglint{0%,55%{transform:translateX(0);opacity:0}",
+            "62%{opacity:1}100%{transform:translateX(130px);opacity:0}}",
+        ));
+    }
+    if p.breath {
+        out.push_str(concat!(
+            ".zbreath{animation:zpuff calc(var(--beat)*2) ease-out infinite}",
+            "@keyframes zpuff{0%{opacity:0;transform:translate(-6px,4px)}30%{opacity:1}",
+            "100%{opacity:0;transform:translate(10px,-10px)}}",
+        ));
+    }
+}
+
+/// Keyframes that walk `prop` once round `colours`, back to the first, evenly spaced.
+fn cycle(name: &str, prop: &str, colours: [String; 7]) -> String {
+    let stops: String = (0..=7)
+        .map(|k| {
+            format!(
+                "{}%{{{prop}:{}}}",
+                fmt(k as f64 * 100.0 / 7.0),
+                colours[k % 7]
+            )
+        })
+        .collect();
+    format!("@keyframes {name}{{{stops}}}")
 }
 
 /// The crest's colours travel round it once every 8 beats. Each spike's lit half cycles the
@@ -103,24 +161,16 @@ pub fn css(glyph: &Glyph) -> String {
 /// it, so at t = 0 (and at rest) every spike shows its own colour. Fill keyframes, not a
 /// `hue-rotate` filter: measured, the filter costs frames.
 fn rainbow_flow() -> String {
-    let cycle = |name: &str, colours: [String; 7]| {
-        let stops: String = (0..=7)
-            .map(|k| {
-                format!(
-                    "{}%{{fill:{}}}",
-                    fmt(k as f64 * 100.0 / 7.0),
-                    colours[k % 7]
-                )
-            })
-            .collect();
-        format!("@keyframes {name}{{{stops}}}")
-    };
     [
         ".zflow .zsp>*{animation:zflow calc(var(--beat)*8) linear infinite;",
         "animation-delay:calc(var(--i)*var(--beat)*-8/7)}",
         ".zflow .zsp>:last-child{animation-name:zflowshade}",
-        &cycle("zflow", RAINBOW.map(String::from)),
-        &cycle("zflowshade", RAINBOW.map(|c| shade(c, punk::NAPE_SHADE))),
+        &cycle("zflow", "fill", RAINBOW.map(String::from)),
+        &cycle(
+            "zflowshade",
+            "fill",
+            RAINBOW.map(|c| shade(c, punk::NAPE_SHADE)),
+        ),
     ]
     .concat()
 }

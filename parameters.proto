@@ -51,6 +51,7 @@ message Icon {
     Hexatri hexatri = 1;
     Ship    ship    = 2;
     Punk    punk    = 3;
+    Park    park    = 4;
   }
 }
 message Hexatri {
@@ -76,6 +77,14 @@ message Punk {
   bool rainbow_flow = 3;  // the crest colours travel, once every 8 beats
   bool chatter = 4;       // the lower teeth drop every half beat
   Eyes eyes = 5;
+}
+message Park {
+  Rider rider = 1;
+  bool pompom = 2;     // the pompom wobbles on every beat
+  bool lens_flow = 3;  // the goggle colours travel, once every 8 beats
+  bool glint = 4;      // a paper bar crosses the lens every 4 beats
+  bool breath = 5;     // three puffs rise from the gaiter every 2 beats
+  string beanie = 6;   // #rrggbb; empty = follow zine.spot
 }
 
 message Overlay {

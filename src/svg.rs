@@ -7,14 +7,14 @@ use crate::blueprint::style::PAL;
 use crate::blueprint::trihex::pat_trihex;
 use crate::geom::{Lattice, fmt};
 use crate::mood::Mood;
-use crate::params::{Glyph, Ground, PunkLook, Rig, Scene, Snow, rider::Gear, trihex};
+use crate::params::{Glyph, Ground, Rig, Scene, Snow, rider::Gear, trihex};
 use crate::rng::PyRandom;
 use crate::zine;
 use crate::zine::halfpipe::halfpipe;
 use crate::zine::print::Frame;
 use crate::zine::summit::summit;
 use crate::zine::treeline::treeline;
-use crate::zine::{punk, rider};
+use crate::zine::{park, punk, rider};
 
 /// `bg` is `userSpaceOnUse` so any shape can paint canvas: `objectBoundingBox` would squeeze the ramp
 /// into one hexagon, and a shut CLOSEOPEN blind would show as a patch.
@@ -158,6 +158,11 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
             in_print,
             None,
         ),
+        Glyph::Park(p) => (
+            rider::icon(&scene.spot, &p.rig, &park::head(&scene.spot, p)),
+            in_print,
+            None,
+        ),
     };
 
     let mut label = match scene.ground {
@@ -167,21 +172,23 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
         Ground::Halfpipe { .. } => "a black print of a snow halfpipe under a turning sunburst",
     }
     .to_string();
-    match scene.glyph {
-        Glyph::Hexatri { .. } => {}
-        Glyph::Ship => label.push_str(" with a spaceship icon"),
-        Glyph::Punk(PunkLook {
-            rig: Rig { gear, rpm, .. },
-            ..
-        }) => {
-            label.push_str(" with a punk head with a rainbow mohawk");
-            label.push_str(match (gear, rpm > 0) {
-                (Gear::Board, true) => " over a spinning snowboard",
-                (Gear::CrossedSkis, true) => " over spinning crossed skis",
-                (Gear::Board, false) => " over a snowboard",
-                (Gear::CrossedSkis, false) => " over crossed skis",
-            });
+    let rider = match &scene.glyph {
+        Glyph::Hexatri { .. } => None,
+        Glyph::Ship => {
+            label.push_str(" with a spaceship icon");
+            None
         }
+        Glyph::Punk(p) => Some((" with a punk head with a rainbow mohawk", p.rig)),
+        Glyph::Park(p) => Some((" with a snowboarder in a beanie and goggles", p.rig)),
+    };
+    if let Some((who, Rig { gear, rpm, .. })) = rider {
+        label.push_str(who);
+        label.push_str(match (gear, rpm > 0) {
+            (Gear::Board, true) => " over a spinning snowboard",
+            (Gear::CrossedSkis, true) => " over spinning crossed skis",
+            (Gear::Board, false) => " over a snowboard",
+            (Gear::CrossedSkis, false) => " over crossed skis",
+        });
     }
     label.push_str(match scene.ground {
         Ground::Trihex {

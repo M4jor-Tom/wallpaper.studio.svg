@@ -1,0 +1,15 @@
+{% if paint %}<defs><linearGradient id="zlens" x1="0" y1="0" x2="1" y2="1"{% if lens_flow +%} class="zlensflow"{% endif %}>{% for s in stops %}<stop offset="{{ s.offset }}" stop-color="{{ s.colour }}" style="{{ s.style }}"/>{% endfor %}</linearGradient><clipPath id="zbc"><path d="M0 -62 C 30 -62 54 -40 54 2 L 0 2 Z"/></clipPath><clipPath id="zgc"><rect x="-37" y="1" width="74" height="28" rx="12"/></clipPath></defs>{% endif %}
+<circle cy="14" r="50"{% if paint +%} fill="{{ paper }}" stroke="{{ ink }}" stroke-width="3"{% endif %}/>
+<g class="zpom"><polygon points="{{ pompom }}"{% if paint +%} fill="{{ paper }}" stroke="{{ ink }}" stroke-width="2.5" stroke-linejoin="round"{% endif %}/></g>
+<path d="M-54 2 C -54 -40 -30 -62 0 -62 C 30 -62 54 -40 54 2 Z"{% if paint +%} fill="{{ beanie }}" stroke="{{ ink }}" stroke-width="3"{% endif %}/>
+{% if paint %}<g clip-path="url(#zbc)"><g stroke="{{ ink }}" stroke-width="1.1">{% for l in hatch %}<line x1="0" y1="{{ l.0 }}" x2="56" y2="{{ l.1 }}"/>{% endfor %}</g></g>{% endif %}
+<rect x="-57" y="-15" width="114" height="20" rx="7"{% if paint +%} fill="{{ ink }}"{% endif %}/>
+{% if paint %}<g stroke="{{ paper }}" stroke-width="1.6">{% for x in ribs %}<line x1="{{ x }}" y1="-12" x2="{{ x }}" y2="2"/>{% endfor %}</g>{% endif %}
+<rect x="-52" y="4" width="104" height="13"{% if paint +%} fill="{{ ink }}"{% endif %}/>
+<rect class="zgoggles" x="-44" y="-4" width="88" height="38" rx="16"{% if paint +%} fill="{{ ink }}" stroke="{{ paper }}" stroke-width="2.5"{% endif %}/>
+{% if paint %}<g class="zlensg"><rect x="-37" y="1" width="74" height="28" rx="12" fill="url(#zlens)"/></g>
+{% if glint %}<g clip-path="url(#zgc)"><polygon class="zgl" opacity="0" points="-50,-30 -36,-30 -60,40 -74,40" fill="{{ paper }}" fill-opacity=".75"/></g>{% endif %}
+<path d="M-6 34 Q 0 39 6 34" fill="none" stroke="{{ ink }}" stroke-width="2.5" stroke-linecap="round"/>{% endif %}
+<path d="M-52 42 Q 0 54 52 42 L 48 68 Q 0 84 -48 68 Z"{% if paint +%} fill="{{ ink }}" stroke="{{ paper }}" stroke-width="2.5"{% endif %}/>
+{% if paint %}<path d="{{ zigzag }}" fill="none" stroke="{{ spot }}" stroke-width="3" stroke-linejoin="round"/>
+{% if breath %}<g class="zbreath" opacity="0" fill="{{ paper }}"><circle cx="30" cy="40" r="4" fill-opacity=".75"/><circle cx="42" cy="31" r="6.5" fill-opacity=".53"/><circle cx="54" cy="22" r="9" fill-opacity=".31"/></g>{% endif %}{% endif %}
