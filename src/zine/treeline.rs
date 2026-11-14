@@ -20,6 +20,15 @@ fn hill_y(f: &Frame, x: f64, base: f64, amp: f64, phase: f64) -> f64 {
     base - amp * (x / f.w * 1.4 * PI + phase).sin()
 }
 
+/// The back hill and the front hill, each `(base, amp, phase)`: one source for the hills drawn and
+/// the hills the pines stand on, so no pine floats off its hill.
+fn hills(f: &Frame) -> [(f64, f64, f64); 2] {
+    [
+        (f.h - 110.0 * f.s, 26.0 * f.s, 0.3),
+        (f.h - 48.0 * f.s, 18.0 * f.s, 1.6),
+    ]
+}
+
 /// The hill as a closed polygon, from 20 units beyond each side down to below the frame.
 fn hill(f: &Frame, base: f64, amp: f64, phase: f64) -> Vec<(f64, f64)> {
     let (s, bottom) = (f.s, f.h + 20.0 * f.s);
@@ -52,18 +61,9 @@ fn pines(f: &Frame, seed: u32) -> [Vec<Pine>; 2] {
         }
         out
     };
-    let back = row(
-        (f.h - 110.0 * s, 26.0 * s, 0.3),
-        (26.0, 58.0),
-        (34.0, 52.0),
-        true,
-    );
-    let front = row(
-        (f.h - 48.0 * s, 18.0 * s, 1.6),
-        (46.0, 90.0),
-        (48.0, 70.0),
-        false,
-    );
+    let [back_hill, front_hill] = hills(f);
+    let back = row(back_hill, (26.0, 58.0), (34.0, 52.0), true);
+    let front = row(front_hill, (46.0, 90.0), (48.0, 70.0), false);
     [back, front]
 }
 
@@ -98,7 +98,7 @@ fn draw(row: usize, i: usize, p: &Pine, s: f64) -> PineSvg {
                 hatch: hatch(&face, 4.5 * s)
                     .into_iter()
                     // `hatch` covers the bounding box; keep the lines that meet the triangle
-                    .filter(|[(_, y), _]| (top.min(bottom - hw)..=bottom).contains(y))
+                    .filter(|[(_, y), _]| (top..=bottom).contains(y))
                     .map(|[(x1, y1), (x2, y2)]| {
                         format!("M{} {}L{} {}", fmt(x1), fmt(y1), fmt(x2), fmt(y2))
                     })
@@ -143,8 +143,7 @@ pub fn treeline(f: &Frame, seed: u32, spot: &str) -> String {
     let s = f.s;
     let [back, front] = pines(f, seed);
     let moon = f.at(320.0, 170.0);
-    let back_hill = hill(f, f.h - 110.0 * s, 26.0 * s, 0.3);
-    let front_hill = hill(f, f.h - 48.0 * s, 18.0 * s, 1.6);
+    let [back_hill, front_hill] = hills(f).map(|(base, amp, phase)| hill(f, base, amp, phase));
     let rows = |row: usize, ps: &[Pine]| {
         ps.iter()
             .enumerate()
@@ -210,10 +209,7 @@ mod tests {
     #[test]
     fn the_hills_span_an_ultrawide_frame() {
         let f = Frame::new(3440, 1440);
-        for (base, amp, phase) in [
-            (f.h - 110.0 * f.s, 26.0 * f.s, 0.3),
-            (f.h - 48.0 * f.s, 18.0 * f.s, 1.6),
-        ] {
+        for (base, amp, phase) in hills(&f) {
             let h = hill(&f, base, amp, phase);
             assert!(h[1].0 < 0.0 && h[h.len() - 2].0 > f.w);
         }
