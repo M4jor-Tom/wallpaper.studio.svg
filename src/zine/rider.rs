@@ -34,7 +34,7 @@ struct Rider<'a> {
 
 /// The head over its gear, cut out as one sticker without a filter: a 12-wide paper stroke under
 /// each shape is the edge, and a spot copy offset (4, 5) under that is the shadow. One beat,
-/// `60 / bpm` seconds, times every head animation; the gear keeps its own rpm.
+/// `60000 / bpm` ms, times every head animation; the gear keeps its own rpm.
 pub fn icon(spot: &str, rig: &Rig, head: &Sticker) -> String {
     let spin = (rig.rpm > 0).then(|| {
         let reverse = if rig.ccw {
@@ -52,8 +52,9 @@ pub fn icon(spot: &str, rig: &Rig, head: &Sticker) -> String {
         Motion::Bob => Some("zbob"),
         Motion::Sway => Some("zsway"),
     };
-    let beat =
-        (motion.is_some() || head.beats).then(|| format!("--beat:{}s", fmt(60.0 / rig.bpm as f64)));
+    // in ms, so every bpm is exact to fmt's two decimals; the unit travels into each calc()
+    let beat = (motion.is_some() || head.beats)
+        .then(|| format!("--beat:{}ms", fmt(60000.0 / rig.bpm as f64)));
     Rider {
         spot,
         paper: PAPER,
@@ -211,9 +212,10 @@ mod tests {
             1,
             "one beat for the whole rider"
         );
-        assert!(svg.contains("--beat:0.5s"), "{svg}");
+        assert!(svg.contains("--beat:500ms"), "{svg}");
         let unset = rendered(&punk_of(json!({"rider": {"motion": "BOB"}})));
-        assert!(unset.contains(&format!("--beat:{}s", fmt(60.0 / 96.0))));
+        // exact: seconds to two decimals would print 0.62s, a 96.8 bpm beat
+        assert!(unset.contains("--beat:625ms"), "{unset}");
         // a head part dancing alone needs the beat too
         assert!(rendered(&punk_of(json!({"chatter": true}))).contains("--beat:"));
         assert!(!rendered(&punk_of(json!({"rider": {"bpm": 120}}))).contains("--beat"));
