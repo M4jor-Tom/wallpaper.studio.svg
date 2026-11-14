@@ -91,7 +91,7 @@ fn every_valid_config_dispatches_correctly() {
         );
         n += 1;
     }
-    assert_eq!(n, 116);
+    assert_eq!(n, 121);
 }
 
 #[test]

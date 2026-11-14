@@ -447,6 +447,20 @@ pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
             json!({}),
         ));
     }
+    // each park setting once, on a summit park rider
+    for park in [
+        json!({"pompom": true}),
+        json!({"lens_flow": true}),
+        json!({"glint": true}),
+        json!({"breath": true}),
+        json!({"beanie": "#ffd400"}),
+    ] {
+        out.push(scene(
+            json!({"summit": {}}),
+            json!({"park": park}),
+            json!({}),
+        ));
+    }
     out
 }
 
@@ -647,7 +661,7 @@ mod tests {
     #[test]
     fn valid_configs_are_the_corpus() {
         let cfgs = valid_configs(0);
-        assert_eq!(cfgs.len(), 116);
+        assert_eq!(cfgs.len(), 121);
         assert_eq!(
             serde_json::to_string(&cfgs[0]).unwrap(),
             r#"{"background":{"trihex":{"image":"NONE","motion":"STATIC"}},"icon":{"hexatri":{"motion":"ROTATE"}},"overlay":{},"seed":0}"#
