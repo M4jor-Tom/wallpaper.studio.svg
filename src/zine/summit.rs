@@ -152,7 +152,7 @@ pub fn summit(f: &Frame, seed: u32, spot: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::params::{Glyph, Ground, RESOLUTIONS, Scene, Snow};
+    use crate::params::{Glyph, Ground, RESOLUTIONS, Rain, Scene, Snow, parse, resolve};
     use crate::svg::build_svg;
     use crate::zine::style::SPOT;
 
@@ -168,10 +168,11 @@ mod tests {
 
     #[test]
     fn settings_and_icons_never_move_a_peak() {
-        // everything before the icon group: the summit layer and the snow over it
+        // everything before the icon group, the first group with a transform (riders nest more):
+        // the summit layer, the snow over it and the rain
         let points = |s: &Scene| -> Vec<String> {
             let svg = build_svg(1920, 1080, s);
-            let page = &svg[..svg.rfind("<g transform=").expect("the icon group")];
+            let page = &svg[..svg.find("<g transform=").expect("the icon group")];
             page.split("points=\"")
                 .skip(1)
                 .map(|p| p[..p.find('"').expect("a closing quote")].to_string())
@@ -179,15 +180,30 @@ mod tests {
         };
         let want = points(&scene(Snow::Flurry, SPOT, Glyph::Hexatri { rotate: true }));
         assert!(want.len() > 5 * 4, "the peaks are missing");
+        let glyphs = [
+            r#"{"hexatri":{"motion":"ROTATE"}}"#,
+            r#"{"hexatri":{"motion":"STATIC"}}"#,
+            r#"{"ship":{}}"#,
+            r#"{"punk":{}}"#,
+            r#"{"park":{}}"#,
+            r#"{"local":{}}"#,
+            r#"{"punk":{"rider":{"gear":"CROSSED_SKIS","motion":"SWAY"}}}"#,
+        ]
+        .map(|icon| resolve(&parse(&format!(r#"{{"icon":{icon}}}"#)).unwrap()).glyph);
+        let rain = Rain {
+            angle: 250.0,
+            color: "#395e53cc".to_string(),
+        };
         for snow in [Snow::Flurry, Snow::NoSnow, Snow::Blizzard] {
             for spot in [SPOT, "#22c8e5"] {
-                for glyph in [
-                    Glyph::Hexatri { rotate: true },
-                    Glyph::Hexatri { rotate: false },
-                    Glyph::Ship,
-                ] {
-                    let s = scene(snow, spot, glyph);
-                    assert_eq!(points(&s), want, "{s:?} moved a peak");
+                for glyph in &glyphs {
+                    for overlay in [None, Some(rain.clone())] {
+                        let s = Scene {
+                            overlay,
+                            ..scene(snow, spot, glyph.clone())
+                        };
+                        assert_eq!(points(&s), want, "{s:?} moved a peak");
+                    }
                 }
             }
         }
