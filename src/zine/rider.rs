@@ -18,6 +18,15 @@ pub struct Sticker {
     pub neck: f64,
 }
 
+/// How the head moves without the gear; shadow and outline move with it.
+enum Move {
+    /// rests centred
+    Still,
+    Bob,
+    /// the inline origin: the neck, in glyph units, one point for every copy
+    Sway(String),
+}
+
 /// Bottom to top: every shadow, every outline, then the art, so the outlines merge into one edge.
 #[derive(Template)]
 #[template(path = "zine/rider.svg")]
@@ -28,10 +37,7 @@ struct Rider<'a> {
     skis: bool,
     /// the spin groups' inline style; none when still, so the gear rests horizontal
     spin: Option<String>,
-    /// the head groups' class; none when still, so the head rests centred
-    motion: Option<&'static str>,
-    /// the sway groups' inline origin: the neck, one point for every copy
-    pivot: Option<String>,
+    motion: Move,
     /// `--beat` for every head animation; none when nothing moves to it
     beat: Option<String>,
     head: &'a Sticker,
@@ -52,17 +58,14 @@ pub fn icon(spot: &str, rig: &Rig, head: &Sticker) -> String {
             fmt(60.0 / rig.rpm as f64)
         )
     });
-    let (motion, pivot) = match rig.motion {
-        Motion::Still => (None, None),
-        Motion::Bob => (Some("zbob"), None),
+    let motion = match rig.motion {
+        Motion::Still => Move::Still,
+        Motion::Bob => Move::Bob,
         // in glyph units, not each group's own box: the art's box is not the outline's
-        Motion::Sway => (
-            Some("zsway"),
-            Some(format!("transform-origin:0 {}px", fmt(head.neck))),
-        ),
+        Motion::Sway => Move::Sway(format!("transform-origin:0 {}px", fmt(head.neck))),
     };
     // in ms, so every bpm is exact to fmt's two decimals; the unit travels into each calc()
-    let beat = (motion.is_some() || head.beats)
+    let beat = (rig.motion != Motion::Still || head.beats)
         .then(|| format!("--beat:{}ms", fmt(60000.0 / rig.bpm as f64)));
     Rider {
         spot,
@@ -71,7 +74,6 @@ pub fn icon(spot: &str, rig: &Rig, head: &Sticker) -> String {
         skis: rig.gear == Gear::CrossedSkis,
         spin,
         motion,
-        pivot,
         beat,
         head,
     }
