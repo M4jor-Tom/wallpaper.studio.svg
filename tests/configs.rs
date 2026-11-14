@@ -1,4 +1,4 @@
-use bgsvg::mood::Mood;
+use bgsvg::mood::{MOODS, Mood};
 use bgsvg::params::{Glyph, Ground, parse, resolve, trihex, valid_configs, validate};
 use bgsvg::svg::build_svg;
 use bgsvg::{load, render_to_string};
@@ -15,26 +15,26 @@ fn every_valid_config_dispatches_correctly() {
         let svg = build_svg(640, 360, &scene);
 
         assert!(svg.starts_with("<svg") && svg.contains("prefers-reduced-motion"));
-        // read off the config itself, so `uses` is checked against the input rather than against `scene`
-        let has = |axis: &str, item: &str| cfg[axis].get(item).is_some();
-        assert_eq!(
-            scene.uses(Mood::Zine),
-            has("background", "summit")
-                || has("background", "treeline")
-                || has("background", "halfpipe")
-                || has("icon", "punk")
-                || has("icon", "park")
-                || has("icon", "local"),
-            "{text}"
-        );
-        assert_eq!(
-            scene.uses(Mood::Blueprint),
-            has("background", "trihex")
-                || has("icon", "hexatri")
-                || has("icon", "ship")
-                || has("overlay", "matrix"),
-            "{text}"
-        );
+        // read off the config itself through the catalogue, so the typed `uses` and the stringly
+        // `MOODS` cannot drift: each branch the config takes must be offered in the moods it uses
+        let taken: Vec<&[Mood]> = ["background", "icon", "overlay"]
+            .iter()
+            .flat_map(|axis| {
+                let branches = cfg[axis].as_object().into_iter().flat_map(|o| o.keys());
+                branches.map(move |b| format!("{axis}.{b}"))
+            })
+            .map(|key| {
+                let entry = MOODS.iter().find(|(k, _)| *k == key);
+                entry.unwrap_or_else(|| panic!("{key} has no mood")).1
+            })
+            .collect();
+        for mood in Mood::ALL {
+            assert_eq!(
+                scene.uses(mood),
+                taken.iter().any(|moods| moods.contains(&mood)),
+                "{mood:?}: {text}"
+            );
+        }
         let ship = scene.glyph == Glyph::Ship;
         // zine hatching draws lines clipped to their faces, so these two only tell on a blueprint page
         if !scene.uses(Mood::Zine) {
