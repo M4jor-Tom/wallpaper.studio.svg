@@ -6,7 +6,7 @@
 {{ under }}
 {{ rain }}
 {{ over }}
-<g transform="{{ icon_transform }}"{% if let Some(f) = icon_filter +%} filter="{{ f }}"{% endif %}>
+<g transform="{{ icon_transform }}"{% if ink +%} filter="url(#ink)"{% endif %}>
 {{ glyph }}
 </g></svg>
 

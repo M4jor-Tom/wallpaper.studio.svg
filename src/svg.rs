@@ -56,7 +56,8 @@ struct Root {
     ws: String,
     hs: String,
     icon_transform: String,
-    icon_filter: Option<&'static str>,
+    /// blueprint's drop shadow under the glyph
+    ink: bool,
     label: String,
     defs: String,
     css: String,
@@ -111,7 +112,7 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
         css.push_str(&zine::css(&scene.glyph));
     }
 
-    let (under, over) = match scene.ground {
+    let (mut under, over) = match scene.ground {
         Ground::Trihex { motion, image } => {
             let mut rng = PyRandom::new(&format!("trihex:{}", scene.seed));
             (
@@ -133,49 +134,33 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
                 .expect("writing to a String"),
             )
         }
-        Ground::Summit { snow } => (
-            summit(&frame, scene.seed, &scene.spot) + &zine::snow::snow(&frame, scene.seed, snow),
-            String::new(),
-        ),
-        Ground::Treeline { snow } => (
-            treeline(&frame, scene.seed, &scene.spot) + &zine::snow::snow(&frame, scene.seed, snow),
-            String::new(),
-        ),
-        Ground::Halfpipe { snow } => (
-            halfpipe(&frame, &scene.spot) + &zine::snow::snow(&frame, scene.seed, snow),
-            String::new(),
-        ),
+        Ground::Summit { .. } => (summit(&frame, scene.seed, &scene.spot), String::new()),
+        Ground::Treeline { .. } => (treeline(&frame, scene.seed, &scene.spot), String::new()),
+        Ground::Halfpipe { .. } => (halfpipe(&frame, &scene.spot), String::new()),
     };
+    if let Some(snow) = scene.ground.snow() {
+        under.push_str(&zine::snow::snow(&frame, scene.seed, snow));
+    }
     let rain = scene.overlay.as_ref().map_or(String::new(), |rain| {
         pat_matrix(w, h, &lat, scene.seed, rain.angle, &rain.color)
     });
     // blueprint glyphs are drop-shadowed and scaled to the lattice, whatever the ground
-    let on_lattice = format!("translate({cx},{cy}) scale({})", fmt(lat.u * 0.34 / 200.0));
+    let on_lattice = |glyph| {
+        let at = format!("translate({cx},{cy}) scale({})", fmt(lat.u * 0.34 / 200.0));
+        (glyph, at, true)
+    };
     // zine glyphs are die-cut stickers drawn as geometry, scaled to the print and hung on the head centre
-    let in_print = format!(
-        "translate({},{}) scale({})",
-        fmt(frame.cx),
-        fmt(frame.cy),
-        fmt(1.06 * frame.s)
-    );
-    let (glyph, icon_transform, icon_filter) = match &scene.glyph {
-        Glyph::Ship => (ico_ship(), on_lattice, Some("url(#ink)")),
-        Glyph::Hexatri { rotate } => (ico_hexatri(*rotate), on_lattice, Some("url(#ink)")),
-        Glyph::Punk(p) => (
-            rider::icon(&scene.spot, &p.rig, &punk::head(p)),
-            in_print,
-            None,
-        ),
-        Glyph::Park(p) => (
-            rider::icon(&scene.spot, &p.rig, &park::head(&scene.spot, p)),
-            in_print,
-            None,
-        ),
-        Glyph::Local(l) => (
-            rider::icon(&scene.spot, &l.rig, &local::head(&scene.spot, l)),
-            in_print,
-            None,
-        ),
+    let in_print = |rig, head| {
+        let (x, y, k) = (frame.cx, frame.cy, 1.06 * frame.s);
+        let at = format!("translate({},{}) scale({})", fmt(x), fmt(y), fmt(k));
+        (rider::icon(&scene.spot, rig, &head), at, false)
+    };
+    let (glyph, icon_transform, ink) = match &scene.glyph {
+        Glyph::Ship => on_lattice(ico_ship()),
+        Glyph::Hexatri { rotate } => on_lattice(ico_hexatri(*rotate)),
+        Glyph::Punk(p) => in_print(&p.rig, punk::head(p)),
+        Glyph::Park(p) => in_print(&p.rig, park::head(&scene.spot, p)),
+        Glyph::Local(l) => in_print(&l.rig, local::head(&scene.spot, l)),
     };
 
     let mut label = match scene.ground {
@@ -185,19 +170,15 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
         Ground::Halfpipe { .. } => "a black print of a snow halfpipe under a turning sunburst",
     }
     .to_string();
-    let rider = match &scene.glyph {
-        Glyph::Hexatri { .. } => None,
-        Glyph::Ship => {
-            label.push_str(" with a spaceship icon");
-            None
-        }
-        Glyph::Punk(p) => Some((" with a punk head with a rainbow mohawk", p.rig)),
-        Glyph::Park(p) => Some((" with a snowboarder in a beanie and goggles", p.rig)),
-        Glyph::Local(l) => Some((" with a bearded mountain local", l.rig)),
-    };
-    if let Some((who, Rig { gear, rpm, .. })) = rider {
-        label.push_str(who);
-        label.push_str(match (gear, rpm > 0) {
+    label.push_str(match scene.glyph {
+        Glyph::Hexatri { .. } => "",
+        Glyph::Ship => " with a spaceship icon",
+        Glyph::Punk(_) => " with a punk head with a rainbow mohawk",
+        Glyph::Park(_) => " with a snowboarder in a beanie and goggles",
+        Glyph::Local(_) => " with a bearded mountain local",
+    });
+    if let Some(Rig { gear, rpm, .. }) = scene.glyph.rig() {
+        label.push_str(match (gear, *rpm > 0) {
             (Gear::Board, true) => " over a spinning snowboard",
             (Gear::CrossedSkis, true) => " over spinning crossed skis",
             (Gear::Board, false) => " over a snowboard",
@@ -213,22 +194,11 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
             image: trihex::Image::Starfield,
             ..
         } => ", some hexagons showing a starfield",
-        Ground::Trihex { .. }
-        | Ground::Summit { snow: Snow::NoSnow }
-        | Ground::Treeline { snow: Snow::NoSnow }
-        | Ground::Halfpipe { snow: Snow::NoSnow } => "",
-        Ground::Summit { snow: Snow::Flurry }
-        | Ground::Treeline { snow: Snow::Flurry }
-        | Ground::Halfpipe { snow: Snow::Flurry } => ", with snow falling",
-        Ground::Summit {
-            snow: Snow::Blizzard,
-        }
-        | Ground::Treeline {
-            snow: Snow::Blizzard,
-        }
-        | Ground::Halfpipe {
-            snow: Snow::Blizzard,
-        } => ", in a blizzard",
+        _ => match scene.ground.snow() {
+            None | Some(Snow::NoSnow) => "",
+            Some(Snow::Flurry) => ", with snow falling",
+            Some(Snow::Blizzard) => ", in a blizzard",
+        },
     });
     if scene.overlay.is_some() {
         label.push_str(", with streams of characters drifting across it");
@@ -239,7 +209,7 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
         ws,
         hs,
         icon_transform,
-        icon_filter,
+        ink,
         label,
         defs,
         css,

@@ -14,7 +14,7 @@ use askama::Template;
 
 use crate::geom::fmt;
 use crate::params::rider::Motion;
-use crate::params::{Glyph, LocalLook, ParkLook, PunkLook};
+use crate::params::{Glyph, LocalLook, ParkLook};
 use style::{RAINBOW, shade};
 
 /// The spot halftone every zine disc is filled with.
@@ -53,13 +53,7 @@ pub fn css(glyph: &Glyph) -> String {
         ".zblizzard{animation:zfall 6s linear infinite}",
     )
     .to_string();
-    let rig = match glyph {
-        Glyph::Punk(PunkLook { rig, .. })
-        | Glyph::Park(ParkLook { rig, .. })
-        | Glyph::Local(LocalLook { rig, .. }) => Some(rig),
-        _ => None,
-    };
-    if let Some(rig) = rig {
+    if let Some(rig) = glyph.rig() {
         // duration and direction are inline: they follow the rider's rpm
         out.push_str(
             ".zspin{transform-box:fill-box;transform-origin:center;animation:zrot linear infinite}",

@@ -28,6 +28,36 @@ pub enum Glyph {
     Local(LocalLook),
 }
 
+impl Glyph {
+    /// `icon.<name>` in the config, and the icon's word in the file slug.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Glyph::Hexatri { .. } => "hexatri",
+            Glyph::Ship => "ship",
+            Glyph::Punk(_) => "punk",
+            Glyph::Park(_) => "park",
+            Glyph::Local(_) => "local",
+        }
+    }
+
+    /// A zine head's gear and beat; a blueprint glyph rides nothing.
+    pub fn rig(&self) -> Option<&Rig> {
+        match self {
+            Glyph::Hexatri { .. } | Glyph::Ship => None,
+            Glyph::Punk(PunkLook { rig, .. })
+            | Glyph::Park(ParkLook { rig, .. })
+            | Glyph::Local(LocalLook { rig, .. }) => Some(rig),
+        }
+    }
+
+    pub fn mood(&self) -> Mood {
+        match self {
+            Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
+            Glyph::Punk(_) | Glyph::Park(_) | Glyph::Local(_) => Mood::Zine,
+        }
+    }
+}
+
 /// A zine head's gear and how it turns, and how the head moves to the beat.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rig {
@@ -103,6 +133,35 @@ pub enum Ground {
     },
 }
 
+impl Ground {
+    /// `background.<name>` in the config, and a zine ground's first word in the file slug.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Ground::Trihex { .. } => "trihex",
+            Ground::Summit { .. } => "summit",
+            Ground::Treeline { .. } => "treeline",
+            Ground::Halfpipe { .. } => "halfpipe",
+        }
+    }
+
+    /// What falls over a zine ground; nothing falls on trihex.
+    pub fn snow(&self) -> Option<Snow> {
+        match *self {
+            Ground::Trihex { .. } => None,
+            Ground::Summit { snow } | Ground::Treeline { snow } | Ground::Halfpipe { snow } => {
+                Some(snow)
+            }
+        }
+    }
+
+    pub fn mood(&self) -> Mood {
+        match self {
+            Ground::Trihex { .. } => Mood::Blueprint,
+            Ground::Summit { .. } | Ground::Treeline { .. } | Ground::Halfpipe { .. } => Mood::Zine,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Rain {
     pub angle: f64,
@@ -124,48 +183,27 @@ impl Scene {
     /// True when the ground, the glyph or the overlay belongs to `mood`, i.e. the page needs that
     /// mood's defs and CSS. Distinct from `mood::MOODS`, which says which moods an item is offered in.
     pub fn uses(&self, mood: Mood) -> bool {
-        let ground = match self.ground {
-            Ground::Trihex { .. } => Mood::Blueprint,
-            Ground::Summit { .. } | Ground::Treeline { .. } | Ground::Halfpipe { .. } => Mood::Zine,
-        };
-        let glyph = match self.glyph {
-            Glyph::Hexatri { .. } | Glyph::Ship => Mood::Blueprint,
-            Glyph::Punk(_) | Glyph::Park(_) | Glyph::Local(_) => Mood::Zine,
-        };
         let overlay = self.overlay.as_ref().map(|Rain { .. }| Mood::Blueprint);
-        [Some(ground), Some(glyph), overlay].contains(&Some(mood))
+        [Some(self.ground.mood()), Some(self.glyph.mood()), overlay].contains(&Some(mood))
     }
 
     /// The output files' first word, `{prefix}-{slug}-{w}x{h}.svg`: the ground's family.
     pub fn prefix(&self) -> &'static str {
-        match self.ground {
-            Ground::Trihex { .. } => "trihex",
-            Ground::Summit { .. } | Ground::Treeline { .. } | Ground::Halfpipe { .. } => "zine",
+        match self.ground.mood() {
+            Mood::Blueprint => "trihex",
+            Mood::Zine => "zine",
         }
     }
 
     /// Lowercase vocabulary that names the output files. Trihex keeps its legacy one (STARFIELD is `space`).
     pub fn slug(&self) -> String {
-        let (fg, icon) = match self.glyph {
-            Glyph::Hexatri { rotate: true } => ("rotate", "hexatri"),
-            Glyph::Hexatri { rotate: false } => ("static", "hexatri"),
-            Glyph::Ship => ("static", "ship"),
-            Glyph::Punk(PunkLook {
-                rig: Rig { rpm: 0, .. },
-                ..
-            }) => ("still", "punk"),
-            Glyph::Punk(_) => ("spin", "punk"),
-            Glyph::Park(ParkLook {
-                rig: Rig { rpm: 0, .. },
-                ..
-            }) => ("still", "park"),
-            Glyph::Park(_) => ("spin", "park"),
-            Glyph::Local(LocalLook {
-                rig: Rig { rpm: 0, .. },
-                ..
-            }) => ("still", "local"),
-            Glyph::Local(_) => ("spin", "local"),
+        let fg = match self.glyph.rig() {
+            Some(Rig { rpm: 0, .. }) => "still",
+            Some(_) => "spin",
+            None if self.glyph == (Glyph::Hexatri { rotate: true }) => "rotate",
+            None => "static",
         };
+        let icon = self.glyph.name();
         let overlay = if self.overlay.is_some() {
             "matrix"
         } else {
@@ -186,17 +224,12 @@ impl Scene {
                 format!("{motion}-{fg}-{icon}-{image}-{overlay}")
             }
             Ground::Summit { snow } | Ground::Treeline { snow } | Ground::Halfpipe { snow } => {
-                let name = match self.ground {
-                    Ground::Summit { .. } => "summit",
-                    Ground::Treeline { .. } => "treeline",
-                    _ => "halfpipe",
-                };
                 let snow = match snow {
                     Snow::Flurry => "flurry",
                     Snow::NoSnow => "nosnow",
                     Snow::Blizzard => "blizzard",
                 };
-                format!("{name}-{snow}-{fg}-{icon}-{overlay}")
+                format!("{}-{snow}-{fg}-{icon}-{overlay}", self.ground.name())
             }
         }
     }
@@ -221,28 +254,20 @@ fn spot_of(p: &Parameters) -> &str {
     p.zine.as_ref().map_or("", |z| z.spot.as_str())
 }
 
-/// The config as the renderer needs it: defaults filled in, colours normalised.
-///
-/// # Panics
-///
-/// On a `zine.spot` or `icon.park.beanie` that is not a hex colour: it expects a config that
-/// passed `validate`, as `load` does.
-pub fn resolve(p: &Parameters) -> Scene {
-    let spot = match spot_of(p) {
-        "" => SPOT.to_string(),
-        s => hex_rgb(s).expect("validate() already accepted zine.spot"),
-    };
-    let glyph = match p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
+/// An unset icon is hexatri, rotating. Its one string is the beanie, so `validate` may call it
+/// once the beanie has passed.
+fn glyph_of(p: &Parameters) -> Glyph {
+    match p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
         Some(icon::Glyph::Ship(_)) => Glyph::Ship,
         Some(icon::Glyph::Hexatri(h)) => Glyph::Hexatri {
             rotate: h.motion() == hexatri::Motion::Rotate,
         },
-        Some(icon::Glyph::Punk(p)) => Glyph::Punk(PunkLook {
-            rig: rig_of(p.rider.as_ref()),
-            crest_wave: p.crest_wave,
-            rainbow_flow: p.rainbow_flow,
-            chatter: p.chatter,
-            eye_pop: p.eyes() == punk::Eyes::Pop,
+        Some(icon::Glyph::Punk(k)) => Glyph::Punk(PunkLook {
+            rig: rig_of(k.rider.as_ref()),
+            crest_wave: k.crest_wave,
+            rainbow_flow: k.rainbow_flow,
+            chatter: k.chatter,
+            eye_pop: k.eyes() == punk::Eyes::Pop,
         }),
         Some(icon::Glyph::Park(k)) => Glyph::Park(ParkLook {
             rig: rig_of(k.rider.as_ref()),
@@ -261,6 +286,19 @@ pub fn resolve(p: &Parameters) -> Scene {
             breath: k.breath,
         }),
         None => Glyph::Hexatri { rotate: true },
+    }
+}
+
+/// The config as the renderer needs it: defaults filled in, colours normalised.
+///
+/// # Panics
+///
+/// On a `zine.spot` or `icon.park.beanie` that is not a hex colour: it expects a config that
+/// passed `validate`, as `load` does.
+pub fn resolve(p: &Parameters) -> Scene {
+    let spot = match spot_of(p) {
+        "" => SPOT.to_string(),
+        s => hex_rgb(s).expect("validate() already accepted zine.spot"),
     };
     let overlay =
         p.overlay
@@ -277,7 +315,7 @@ pub fn resolve(p: &Parameters) -> Scene {
     Scene {
         seed: p.seed,
         ground: ground_of(p),
-        glyph,
+        glyph: glyph_of(p),
         overlay,
         spot,
     }
@@ -312,28 +350,32 @@ pub fn validate(p: &Parameters) -> Result<(), Error> {
         };
         hex_rgba(color).map_err(|e| Error::Invalid(format!("overlay.matrix.color: {e}")))?;
     }
-    let rider = match p.icon.as_ref().and_then(|i| i.glyph.as_ref()) {
-        Some(icon::Glyph::Punk(k)) => Some(("icon.punk", k.rider.as_ref())),
-        Some(icon::Glyph::Park(k)) => {
-            if !k.beanie.is_empty() {
-                hex_rgb(&k.beanie).map_err(|e| Error::Invalid(format!("icon.park.beanie: {e}")))?;
-            }
-            Some(("icon.park", k.rider.as_ref()))
-        }
-        Some(icon::Glyph::Local(k)) => Some(("icon.local", k.rider.as_ref())),
-        _ => None,
+    let icon = p.icon.as_ref().and_then(|i| i.glyph.as_ref());
+    if let Some(icon::Glyph::Park(k)) = icon
+        && !k.beanie.is_empty()
+    {
+        hex_rgb(&k.beanie).map_err(|e| Error::Invalid(format!("icon.park.beanie: {e}")))?;
+    }
+    let rider = match icon {
+        None | Some(icon::Glyph::Hexatri(_) | icon::Glyph::Ship(_)) => None,
+        Some(
+            icon::Glyph::Punk(Punk { rider, .. })
+            | icon::Glyph::Park(Park { rider, .. })
+            | icon::Glyph::Local(Local { rider, .. }),
+        ) => rider.as_ref(),
     };
-    if let Some((at, rider)) = rider {
-        let Rig { rpm, bpm, .. } = rig_of(rider);
-        if rpm > 30 {
+    if let Some(r) = rider {
+        // the beanie passed above, so the glyph resolves
+        let at = glyph_of(p).name();
+        if let Some(rpm) = r.spin_rpm.filter(|&rpm| rpm > 30) {
             return Err(Error::Invalid(format!(
-                "{at}.rider.spin_rpm: {rpm} is above 30 (turns a minute; 0 = still)"
+                "icon.{at}.rider.spin_rpm: {rpm} is above 30 (turns a minute; 0 = still)"
             )));
         }
-        // 0 resolved to 96 above, so it passes
-        if !(40..=200).contains(&bpm) {
+        if r.bpm != 0 && !(40..=200).contains(&r.bpm) {
             return Err(Error::Invalid(format!(
-                "{at}.rider.bpm: {bpm} is outside 40-200 (beats a minute; 0 = 96)"
+                "icon.{at}.rider.bpm: {} is outside 40-200 (beats a minute; 0 = 96)",
+                r.bpm
             )));
         }
     }
