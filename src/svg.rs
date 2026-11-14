@@ -66,7 +66,15 @@ struct Root {
     glyph: String,
 }
 
+/// # Panics
+///
+/// On a zero width or height, where the lattice divides by zero and a zine ground's rows never
+/// advance. `render_to_string` returns an error instead.
 pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
+    assert!(
+        w > 0 && h > 0,
+        "build_svg needs a non-zero width and height, got {w}x{h}"
+    );
     let lat = Lattice::new(w, h);
     let frame = Frame::new(w, h);
     let (ws, hs) = (fmt(w as f64), fmt(h as f64));
@@ -253,6 +261,14 @@ mod tests {
     fn a_blueprint_scene_uses_only_blueprint() {
         let s = resolve(&parse("{}").unwrap());
         assert!(s.uses(Mood::Blueprint) && !s.uses(Mood::Zine));
+    }
+
+    #[test]
+    #[should_panic(expected = "a non-zero width and height")]
+    fn a_zero_dimension_is_refused_not_drawn() {
+        // at s = 0 a zine ground's rows never advance: release builds hang
+        let halfpipe = resolve(&parse(r#"{"background":{"halfpipe":{}}}"#).unwrap());
+        build_svg(0, 1080, &halfpipe);
     }
 
     #[test]
