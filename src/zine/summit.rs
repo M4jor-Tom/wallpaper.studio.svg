@@ -3,7 +3,7 @@ use askama::Template;
 
 use crate::geom::{fmt, pts};
 use crate::rng::PyRandom;
-use crate::zine::print::{Frame, hatch, header, seg};
+use crate::zine::print::{Frame, hatch, hatch_path, header};
 use crate::zine::style::{PAPER, SHEET};
 
 struct Peak {
@@ -56,7 +56,7 @@ struct PeakSvg {
     id: String,
     tri: String,
     face: String,
-    hatch: Vec<(String, String, String, String)>,
+    hatch: String,
     cap: String,
 }
 
@@ -79,10 +79,7 @@ fn draw(i: usize, p: &Peak, s: f64) -> PeakSvg {
         id: format!("zh{i}"),
         tri: pts(&[(ax - p.hw, p.base), p.apex, right]),
         face: pts(&face),
-        hatch: hatch(&face, 6.0 * s)
-            .into_iter()
-            .map(|[a, b]| seg(a, b))
-            .collect(),
+        hatch: hatch_path(hatch(&face, 6.0 * s)),
         cap: pts(&cap),
     }
 }
