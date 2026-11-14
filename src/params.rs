@@ -91,6 +91,13 @@ pub struct PunkLook {
     pub eye_pop: bool,
 }
 
+impl PunkLook {
+    /// Some part of the head moves to the beat: the sticker sets `--beat`, the CSS ships the parts.
+    pub fn beating(&self) -> bool {
+        self.crest_wave || self.rainbow_flow || self.chatter || self.eye_pop
+    }
+}
+
 /// The glint across a head's lenses and the breath rising beside it: the park rider and the local
 /// both carry them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -112,6 +119,13 @@ pub struct ParkLook {
     pub beanie: Option<String>,
 }
 
+impl ParkLook {
+    /// Some part of the head moves to the beat: the sticker sets `--beat`, the CSS ships the parts.
+    pub fn beating(&self) -> bool {
+        self.pompom || self.lens_flow || self.fx.glint || self.fx.breath
+    }
+}
+
 /// The mountain local's rig and which parts of its head move. Not `Local`: that is the config
 /// message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -120,6 +134,13 @@ pub struct LocalLook {
     pub beard_wind: bool,
     pub frost: bool,
     pub fx: Fx,
+}
+
+impl LocalLook {
+    /// Some part of the head moves to the beat: the sticker sets `--beat`, the CSS ships the parts.
+    pub fn beating(&self) -> bool {
+        self.beard_wind || self.frost || self.fx.glint || self.fx.breath
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

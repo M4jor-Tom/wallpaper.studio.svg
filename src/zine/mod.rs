@@ -14,7 +14,7 @@ use askama::Template;
 
 use crate::geom::fmt;
 use crate::params::rider::Motion;
-use crate::params::{Fx, Glyph, LocalLook, ParkLook};
+use crate::params::{Fx, Glyph, LocalLook, ParkLook, PunkLook};
 use style::{RAINBOW, shade};
 
 /// The spot halftone every zine disc is filled with.
@@ -42,6 +42,15 @@ pub fn defs(spot: &str, s: f64) -> String {
 /// turns nothing, `NO_SNOW` drops nothing, a trihex ground has neither); a head animation's ship
 /// only when it is on. Classes and keyframes start with `z`, so they never meet blueprint's. Each
 /// animation rests where it starts, so the closing reduced-motion rule leaves the print intact.
+///
+/// A head's part animations ship only while its look is `beating()`, the same test that makes the
+/// sticker set `--beat`, so no keyframe runs on a beat that is not there.
+///
+/// A `fill-box` pivot turns each copy of a part about that copy's own box, so it is only used where
+/// every copy's box is the same: on art-only parts (`.zeye`, `.zfrost`), and on the gear (`.zspin`),
+/// crest spikes (`.zsp`), pompom (`.zpom`) and locks (`.zlock`), whose silhouette boxes equal their
+/// art boxes. SWAY turns the whole head, whose art box outreaches its outline's, so it pivots on an
+/// explicit neck set inline by `rider::icon`, one point for shadow, outline and art.
 pub fn css(glyph: &Glyph) -> String {
     let mut out = concat!(
         "@keyframes zrot{to{transform:rotate(360deg)}}",
@@ -72,40 +81,44 @@ pub fn css(glyph: &Glyph) -> String {
             ),
         });
     }
-    if let Glyph::Punk(p) = glyph {
-        if p.crest_wave {
-            out.push_str(concat!(
-                ".zwave .zsp{transform-box:fill-box;transform-origin:50% 100%;",
-                "animation:zwave var(--beat) ease-in-out infinite;",
-                "animation-delay:calc(var(--i)*var(--beat)*-.13)}",
-                "@keyframes zwave{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}",
-            ));
-        }
-        if p.rainbow_flow {
-            out.push_str(&rainbow_flow());
-        }
-        if p.chatter {
-            out.push_str(concat!(
-                ".zchat .zlo{animation:zchat calc(var(--beat)/2) steps(2,jump-none) infinite}",
-                "@keyframes zchat{from{transform:translateY(0)}to{transform:translateY(4px)}}",
-            ));
-        }
-        if p.eye_pop {
-            out.push_str(concat!(
-                ".zpop .zeye{transform-box:fill-box;transform-origin:center;",
-                "animation:zpop calc(var(--beat)*4) ease-out infinite}",
-                "@keyframes zpop{0%,12%,100%{transform:scale(1)}4%{transform:scale(1.45)}}",
-            ));
-        }
-    }
-    if let Glyph::Park(p) = glyph {
-        park_css(p, &mut out);
-    }
-    if let Glyph::Local(l) = glyph {
-        local_css(l, &mut out);
+    match glyph {
+        Glyph::Hexatri { .. } | Glyph::Ship => {}
+        Glyph::Punk(p) if p.beating() => punk_css(p, &mut out),
+        Glyph::Park(p) if p.beating() => park_css(p, &mut out),
+        Glyph::Local(l) if l.beating() => local_css(l, &mut out),
+        // a still head: nothing on it moves to a beat
+        Glyph::Punk(_) | Glyph::Park(_) | Glyph::Local(_) => {}
     }
     out.push_str("@media (prefers-reduced-motion:reduce){*{animation:none!important}}");
     out
+}
+
+/// The punk's animations, each only when on. All of them run on the rider's `--beat`.
+fn punk_css(p: &PunkLook, out: &mut String) {
+    if p.crest_wave {
+        out.push_str(concat!(
+            ".zwave .zsp{transform-box:fill-box;transform-origin:50% 100%;",
+            "animation:zwave var(--beat) ease-in-out infinite;",
+            "animation-delay:calc(var(--i)*var(--beat)*-.13)}",
+            "@keyframes zwave{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}",
+        ));
+    }
+    if p.rainbow_flow {
+        out.push_str(&rainbow_flow());
+    }
+    if p.chatter {
+        out.push_str(concat!(
+            ".zchat .zlo{animation:zchat calc(var(--beat)/2) steps(2,jump-none) infinite}",
+            "@keyframes zchat{from{transform:translateY(0)}to{transform:translateY(4px)}}",
+        ));
+    }
+    if p.eye_pop {
+        out.push_str(concat!(
+            ".zpop .zeye{transform-box:fill-box;transform-origin:center;",
+            "animation:zpop calc(var(--beat)*4) ease-out infinite}",
+            "@keyframes zpop{0%,12%,100%{transform:scale(1)}4%{transform:scale(1.45)}}",
+        ));
+    }
 }
 
 /// The park rider's animations, each only when on. All of them run on the rider's `--beat`.
@@ -123,7 +136,7 @@ fn park_css(p: &ParkLook, out: &mut String) {
             ".zlensflow stop{animation:zlensflow calc(var(--beat)*8) linear infinite;",
             "animation-delay:calc(var(--i)*var(--beat)*-8/7)}",
         ));
-        out.push_str(&cycle("zlensflow", "stop-color", RAINBOW.map(String::from)));
+        out.push_str(&cycle("zlensflow", "stop-color", RAINBOW));
     }
     fx_css(p.fx, out);
 }
@@ -170,13 +183,13 @@ fn fx_css(fx: Fx, out: &mut String) {
 }
 
 /// Keyframes that walk `prop` once round `colours`, back to the first, evenly spaced.
-fn cycle(name: &str, prop: &str, colours: [String; 7]) -> String {
+fn cycle(name: &str, prop: &str, colours: [impl AsRef<str>; 7]) -> String {
     let stops: String = (0..=7)
         .map(|k| {
             format!(
                 "{}%{{{prop}:{}}}",
                 fmt(k as f64 * 100.0 / 7.0),
-                colours[k % 7]
+                colours[k % 7].as_ref()
             )
         })
         .collect();
@@ -192,7 +205,7 @@ fn rainbow_flow() -> String {
         ".zflow .zsp>*{animation:zflow calc(var(--beat)*8) linear infinite;",
         "animation-delay:calc(var(--i)*var(--beat)*-8/7)}",
         ".zflow .zsp>:last-child{animation-name:zflowshade}",
-        &cycle("zflow", "fill", RAINBOW.map(String::from)),
+        &cycle("zflow", "fill", RAINBOW),
         &cycle(
             "zflowshade",
             "fill",
