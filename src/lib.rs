@@ -88,13 +88,8 @@ fn render(text: &str) -> Result<(), Error> {
             .map(|r| params::parse_res(r))
             .collect::<Result<_, _>>()?
     };
-    let prefix = if matches!(scene.ground, params::Ground::Trihex { .. }) {
-        "trihex"
-    } else {
-        "zine"
-    };
     for (w, h) in sizes {
-        let path = format!("{dir}/{prefix}-{}-{w}x{h}.svg", scene.slug());
+        let path = format!("{dir}/{}-{}-{w}x{h}.svg", scene.prefix(), scene.slug());
         std::fs::write(&path, svg::build_svg(w, h, &scene))?;
         println!("{path}");
     }

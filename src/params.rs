@@ -134,6 +134,14 @@ impl Scene {
         [Some(ground), Some(glyph), overlay].contains(&Some(mood))
     }
 
+    /// The output files' first word, `{prefix}-{slug}-{w}x{h}.svg`: the ground's family.
+    pub fn prefix(&self) -> &'static str {
+        match self.ground {
+            Ground::Trihex { .. } => "trihex",
+            Ground::Summit { .. } | Ground::Treeline { .. } | Ground::Halfpipe { .. } => "zine",
+        }
+    }
+
     /// Lowercase vocabulary that names the output files. Trihex keeps its legacy one (STARFIELD is `space`).
     pub fn slug(&self) -> String {
         let (fg, icon) = match self.glyph {
@@ -648,6 +656,18 @@ mod tests {
         assert_eq!(s.slug(), "summit-blizzard-static-ship-none");
         let s = resolve(&parse(r#"{"background":{"summit":{}}}"#).unwrap());
         assert_eq!(s.slug(), "summit-flurry-rotate-hexatri-none");
+    }
+
+    #[test]
+    fn the_file_prefix_is_the_ground_s() {
+        let prefix = |cfg: &str| resolve(&parse(cfg).unwrap()).prefix();
+        assert_eq!(prefix("{}"), "trihex");
+        // a zine head on a trihex ground is still a trihex file
+        assert_eq!(prefix(r#"{"icon":{"punk":{}}}"#), "trihex");
+        for ground in ["summit", "treeline", "halfpipe"] {
+            let cfg = format!(r#"{{"background":{{"{ground}":{{}}}},"icon":{{"ship":{{}}}}}}"#);
+            assert_eq!(prefix(&cfg), "zine", "{cfg}");
+        }
     }
 
     #[test]
