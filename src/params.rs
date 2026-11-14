@@ -70,9 +70,9 @@ pub struct ParkLook {
     pub lens_flow: bool,
     pub glint: bool,
     pub breath: bool,
-    /// lowercase `#rrggbb`; `Scene.spot` when the config leaves it empty. Reaches the template
-    /// verbatim and the escaper is a no-op, so it must have passed `validate`.
-    pub beanie: String,
+    /// lowercase `#rrggbb`, or none to follow `Scene.spot`. Reaches the template verbatim and the
+    /// escaper is a no-op, so it must have passed `validate`.
+    pub beanie: Option<String>,
 }
 
 /// The mountain local's rig and which parts of its head move. Not `Local`: that is the config
@@ -250,10 +250,8 @@ pub fn resolve(p: &Parameters) -> Scene {
             lens_flow: k.lens_flow,
             glint: k.glint,
             breath: k.breath,
-            beanie: match k.beanie.as_str() {
-                "" => spot.clone(),
-                b => hex_rgb(b).expect("validate() already accepted icon.park.beanie"),
-            },
+            beanie: (!k.beanie.is_empty())
+                .then(|| hex_rgb(&k.beanie).expect("validate() already accepted icon.park.beanie")),
         }),
         Some(icon::Glyph::Local(k)) => Glyph::Local(LocalLook {
             rig: rig_of(k.rider.as_ref()),

@@ -78,7 +78,7 @@ pub fn head(spot: &str, p: &ParkLook) -> Sticker {
             paper: PAPER,
             ink: INK,
             spot,
-            beanie: &p.beanie,
+            beanie: p.beanie.as_deref().unwrap_or(spot),
             stops: &stops,
             pompom: &pompom,
             hatch: &hatch,
@@ -127,13 +127,13 @@ mod tests {
 
     #[test]
     fn the_beanie_follows_the_spot_unless_set() {
-        assert_eq!(look(json!({})).beanie, SPOT);
+        assert_eq!(look(json!({})).beanie, None);
         assert!(dome(&art(json!({}))).contains(r##"fill="#e63946""##));
-        let cfg = json!({"zine": {"spot": "#22c8e5"}, "icon": {"park": {}}}).to_string();
-        let Glyph::Park(k) = resolve(&parse(&cfg).unwrap()).glyph else {
-            panic!()
-        };
-        assert_eq!(k.beanie, "#22c8e5", "a spot-coloured beanie");
+        let unset = head("#22c8e5", &look(json!({}))).art;
+        assert!(
+            dome(&unset).contains(r##"fill="#22c8e5""##),
+            "a spot-coloured beanie"
+        );
         let set = look(json!({"beanie": "#00ffff"}));
         assert!(dome(&head("#e63946", &set).art).contains(r##"fill="#00ffff""##));
     }
