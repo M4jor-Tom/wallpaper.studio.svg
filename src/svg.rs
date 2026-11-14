@@ -3,7 +3,6 @@ use askama::Template;
 use crate::blueprint;
 use crate::blueprint::icon::{ico_hexatri, ico_ship};
 use crate::blueprint::matrix::pat_matrix;
-use crate::blueprint::style::PAL;
 use crate::blueprint::trihex::pat_trihex;
 use crate::geom::{Lattice, fmt};
 use crate::mood::Mood;
@@ -15,18 +14,6 @@ use crate::zine::print::Frame;
 use crate::zine::summit::summit;
 use crate::zine::treeline::treeline;
 use crate::zine::{local, park, punk, rider};
-
-/// `bg` is `userSpaceOnUse` so any shape can paint canvas: `objectBoundingBox` would squeeze the ramp
-/// into one hexagon, and a shut CLOSEOPEN blind would show as a patch.
-#[derive(askama::Template)]
-#[template(path = "blueprint/defs.svg")]
-struct Defs {
-    w04: String,
-    h: String,
-    bg0: &'static str,
-    bg1: &'static str,
-    nebulae: Vec<(&'static str, &'static str)>,
-}
 
 /// Canvas and lattice: the trihex layer under the rain.
 #[derive(askama::Template)]
@@ -83,33 +70,13 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
 
     // Each mood contributes its defs and CSS only when the scene uses it.
     let (mut defs, mut css) = (String::new(), String::new());
-    if scene.uses(Mood::Blueprint) {
-        let starfield = matches!(
-            scene.ground,
-            Ground::Trihex {
-                image: trihex::Image::Starfield,
-                ..
-            }
-        );
-        let nebulae = if starfield {
-            vec![("neba", "#6fb7d1"), ("nebb", "#77c9a6")]
-        } else {
-            Vec::new()
+    for mood in Mood::ALL.into_iter().filter(|&m| scene.uses(m)) {
+        let (d, c) = match mood {
+            Mood::Blueprint => (blueprint::defs(scene, w, h), blueprint::css()),
+            Mood::Zine => (zine::defs(&scene.spot, frame.s), zine::css(&scene.glyph)),
         };
-        defs = Defs {
-            w04: fmt(w as f64 * 0.4),
-            h: fmt(h as f64),
-            bg0: PAL.bg.0.as_str(),
-            bg1: PAL.bg.1.as_str(),
-            nebulae,
-        }
-        .render()
-        .expect("writing to a String");
-        css = blueprint::style::css();
-    }
-    if scene.uses(Mood::Zine) {
-        defs.push_str(&zine::defs(&scene.spot, frame.s));
-        css.push_str(&zine::css(&scene.glyph));
+        defs.push_str(&d);
+        css.push_str(&c);
     }
 
     let (mut under, over) = match scene.ground {
