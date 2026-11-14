@@ -7,22 +7,12 @@ use crate::blueprint::trihex::pat_trihex;
 use crate::geom::{Lattice, fmt};
 use crate::mood::Mood;
 use crate::params::{Glyph, Ground, Rig, Scene, Snow, rider::Gear, trihex};
-use crate::rng::PyRandom;
 use crate::zine;
 use crate::zine::halfpipe::halfpipe;
 use crate::zine::print::Frame;
 use crate::zine::summit::summit;
 use crate::zine::treeline::treeline;
 use crate::zine::{local, park, punk, rider};
-
-/// Canvas and lattice: the trihex layer under the rain.
-#[derive(askama::Template)]
-#[template(path = "blueprint/under.svg")]
-struct Under {
-    ws: String,
-    hs: String,
-    lattice: String,
-}
 
 /// Halo and vignette: the trihex layer over the rain, so the halo masks it around the icon.
 #[derive(askama::Template)]
@@ -80,27 +70,18 @@ pub fn build_svg(w: u32, h: u32, scene: &Scene) -> String {
     }
 
     let (mut under, over) = match scene.ground {
-        Ground::Trihex { motion, image } => {
-            let mut rng = PyRandom::new(&format!("trihex:{}", scene.seed));
-            (
-                Under {
-                    ws: ws.clone(),
-                    hs: hs.clone(),
-                    lattice: pat_trihex(w, h, &lat, scene.seed, motion, image, &mut rng),
-                }
-                .render()
-                .expect("writing to a String"),
-                Over {
-                    ws: ws.clone(),
-                    hs: hs.clone(),
-                    cx: cx.clone(),
-                    cy: cy.clone(),
-                    clear_r: fmt(lat.clear_r),
-                }
-                .render()
-                .expect("writing to a String"),
-            )
-        }
+        Ground::Trihex { motion, image } => (
+            pat_trihex(w, h, &lat, scene.seed, motion, image),
+            Over {
+                ws: ws.clone(),
+                hs: hs.clone(),
+                cx: cx.clone(),
+                cy: cy.clone(),
+                clear_r: fmt(lat.clear_r),
+            }
+            .render()
+            .expect("writing to a String"),
+        ),
         Ground::Summit { .. } => (summit(&frame, scene.seed, &scene.spot), String::new()),
         Ground::Treeline { .. } => (treeline(&frame, scene.seed, &scene.spot), String::new()),
         Ground::Halfpipe { .. } => (halfpipe(&frame, &scene.spot), String::new()),

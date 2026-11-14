@@ -196,6 +196,8 @@ struct HexBorder {
 #[derive(askama::Template)]
 #[template(path = "blueprint/trihex.svg")]
 struct Trihex {
+    ws: String,
+    hs: String,
     voids: Vec<VoidCell>,
     tris: Vec<TriFill>,
     hexes: Vec<HexBorder>,
@@ -213,10 +215,10 @@ pub fn pat_trihex(
     seed: u32,
     motion: Motion,
     image: Image,
-    rng: &mut PyRandom,
 ) -> String {
+    let mut rng = PyRandom::new(&format!("trihex:{seed}"));
     let sw = fmt(lat.u * 0.0013);
-    let plan = assign(lat, rng);
+    let plan = assign(lat, &mut rng);
 
     let scan_delay = |x: f64, y: f64| fmt(-((x + y) / (w as f64 + h as f64)) * 5.0);
     let closeopen = motion == Motion::Closeopen;
@@ -310,6 +312,8 @@ pub fn pat_trihex(
         .collect();
 
     Trihex {
+        ws: fmt(w as f64),
+        hs: fmt(h as f64),
         voids,
         tris,
         hexes,

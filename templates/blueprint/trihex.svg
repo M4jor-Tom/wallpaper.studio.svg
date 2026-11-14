@@ -1,3 +1,4 @@
+<rect width="{{ ws }}" height="{{ hs }}" fill="url(#bg)"/><g>
 {% for v in voids %}
   <clipPath id="{{ v.cid }}"><polygon points="{{ v.poly }}"/></clipPath><g{% if let Some(p) = v.phase +%} class="win" style="{{ p }}"{% endif +%} clip-path="url(#{{ v.cid }})"><polygon points="{{ v.poly }}" fill="{{ void }}"/><ellipse cx="{{ v.nx }}" cy="{{ v.ny }}" rx="{{ v.nrx }}" ry="{{ v.nry }}" fill="url(#{{ v.neb }})" transform="{{ v.rot }}"/>
   {% for s in v.stars %}
@@ -17,3 +18,4 @@
 {% for hx in hexes %}
   <polygon{% if let Some(a) = hx.anim +%} class="{{ a.cls }}" style="{{ a.style }}"{% endif +%} points="{{ hx.poly }}" fill="{{ hx.fill }}"{% if let Some(o) = hx.fill_opacity +%} fill-opacity="{{ o }}"{% endif +%} stroke="{{ ink }}" stroke-opacity="{{ hx.so }}" stroke-width="{{ sw }}"/>
 {% endfor %}
+</g>
