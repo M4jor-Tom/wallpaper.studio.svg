@@ -43,9 +43,6 @@ pub fn defs(spot: &str, s: f64) -> String {
 /// only when it is on. Classes and keyframes start with `z`, so they never meet blueprint's. Each
 /// animation rests where it starts, so the closing reduced-motion rule leaves the print intact.
 ///
-/// A head's part animations ship only while its look is `beating()`, the same test that makes the
-/// sticker set `--beat`, so no keyframe runs on a beat that is not there.
-///
 /// A `fill-box` pivot turns each copy of a part about that copy's own box, so it is only used where
 /// every copy's box is the same: on art-only parts (`.zeye`, `.zfrost`), and on the gear (`.zspin`),
 /// crest spikes (`.zsp`), pompom (`.zpom`) and locks (`.zlock`), whose silhouette boxes equal their
@@ -83,11 +80,9 @@ pub fn css(glyph: &Glyph) -> String {
     }
     match glyph {
         Glyph::Hexatri { .. } | Glyph::Ship => {}
-        Glyph::Punk(p) if p.beating() => punk_css(p, &mut out),
-        Glyph::Park(p) if p.beating() => park_css(p, &mut out),
-        Glyph::Local(l) if l.beating() => local_css(l, &mut out),
-        // a still head: nothing on it moves to a beat
-        Glyph::Punk(_) | Glyph::Park(_) | Glyph::Local(_) => {}
+        Glyph::Punk(p) => punk_css(p, &mut out),
+        Glyph::Park(p) => park_css(p, &mut out),
+        Glyph::Local(l) => local_css(l, &mut out),
     }
     out.push_str("@media (prefers-reduced-motion:reduce){*{animation:none!important}}");
     out
@@ -104,7 +99,21 @@ fn punk_css(p: &PunkLook, out: &mut String) {
         ));
     }
     if p.rainbow_flow {
-        out.push_str(&rainbow_flow());
+        // The crest's colours travel round it once every 8 beats. Each spike's lit half cycles the
+        // rainbow and its shade half the shaded rainbow, a seventh of the cycle behind the spike
+        // before it, so at t = 0 (and at rest) every spike shows its own colour. Fill keyframes,
+        // not a `hue-rotate` filter: measured, the filter costs frames.
+        out.push_str(concat!(
+            ".zflow .zsp>*{animation:zflow calc(var(--beat)*8) linear infinite;",
+            "animation-delay:calc(var(--i)*var(--beat)*-8/7)}",
+            ".zflow .zsp>:last-child{animation-name:zflowshade}",
+        ));
+        out.push_str(&cycle("zflow", "fill", RAINBOW));
+        out.push_str(&cycle(
+            "zflowshade",
+            "fill",
+            RAINBOW.map(|c| shade(c, punk::NAPE_SHADE)),
+        ));
     }
     if p.chatter {
         out.push_str(concat!(
@@ -194,25 +203,6 @@ fn cycle(name: &str, prop: &str, colours: [impl AsRef<str>; 7]) -> String {
         })
         .collect();
     format!("@keyframes {name}{{{stops}}}")
-}
-
-/// The crest's colours travel round it once every 8 beats. Each spike's lit half cycles the
-/// rainbow and its shade half the shaded rainbow, a seventh of the cycle behind the spike before
-/// it, so at t = 0 (and at rest) every spike shows its own colour. Fill keyframes, not a
-/// `hue-rotate` filter: measured, the filter costs frames.
-fn rainbow_flow() -> String {
-    [
-        ".zflow .zsp>*{animation:zflow calc(var(--beat)*8) linear infinite;",
-        "animation-delay:calc(var(--i)*var(--beat)*-8/7)}",
-        ".zflow .zsp>:last-child{animation-name:zflowshade}",
-        &cycle("zflow", "fill", RAINBOW),
-        &cycle(
-            "zflowshade",
-            "fill",
-            RAINBOW.map(|c| shade(c, punk::NAPE_SHADE)),
-        ),
-    ]
-    .concat()
 }
 
 #[cfg(test)]

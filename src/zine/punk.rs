@@ -195,7 +195,7 @@ pub fn head(p: &PunkLook) -> Sticker {
         // the outline has the crest to wave, but no colour, teeth or eyes to animate
         silhouette: draw(false, p.crest_wave.then(|| "zwave".to_string())),
         art: draw(true, (!on.is_empty()).then(|| on.join(" "))),
-        beats: p.beating(),
+        beats: p.crest_wave || p.rainbow_flow || p.chatter || p.eye_pop,
         // the disc's foot: the crest is all above it
         neck: CY + R,
     }

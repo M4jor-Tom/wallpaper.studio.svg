@@ -91,13 +91,6 @@ pub struct PunkLook {
     pub eye_pop: bool,
 }
 
-impl PunkLook {
-    /// Some part of the head moves to the beat: the sticker sets `--beat`, the CSS ships the parts.
-    pub fn beating(&self) -> bool {
-        self.crest_wave || self.rainbow_flow || self.chatter || self.eye_pop
-    }
-}
-
 /// The glint across a head's lenses and the breath rising beside it: the park rider and the local
 /// both carry them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -119,13 +112,6 @@ pub struct ParkLook {
     pub beanie: Option<String>,
 }
 
-impl ParkLook {
-    /// Some part of the head moves to the beat: the sticker sets `--beat`, the CSS ships the parts.
-    pub fn beating(&self) -> bool {
-        self.pompom || self.lens_flow || self.fx.glint || self.fx.breath
-    }
-}
-
 /// The mountain local's rig and which parts of its head move. Not `Local`: that is the config
 /// message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,13 +120,6 @@ pub struct LocalLook {
     pub beard_wind: bool,
     pub frost: bool,
     pub fx: Fx,
-}
-
-impl LocalLook {
-    /// Some part of the head moves to the beat: the sticker sets `--beat`, the CSS ships the parts.
-    pub fn beating(&self) -> bool {
-        self.beard_wind || self.frost || self.fx.glint || self.fx.breath
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -381,32 +360,25 @@ pub fn validate(p: &Parameters) -> Result<(), Error> {
         };
         hex_rgba(color).map_err(|e| Error::Invalid(format!("overlay.matrix.color: {e}")))?;
     }
-    let icon = p.icon.as_ref().and_then(|i| i.glyph.as_ref());
-    if let Some(icon::Glyph::Park(k)) = icon
+    if let Some(icon::Glyph::Park(k)) = p.icon.as_ref().and_then(|i| i.glyph.as_ref())
         && !k.beanie.is_empty()
     {
         hex_rgb(&k.beanie).map_err(|e| Error::Invalid(format!("icon.park.beanie: {e}")))?;
     }
-    let rider = match icon {
-        None | Some(icon::Glyph::Hexatri(_) | icon::Glyph::Ship(_)) => None,
-        Some(
-            icon::Glyph::Punk(Punk { rider, .. })
-            | icon::Glyph::Park(Park { rider, .. })
-            | icon::Glyph::Local(Local { rider, .. }),
-        ) => rider.as_ref(),
-    };
-    if let Some(r) = rider {
-        // the beanie passed above, so the glyph resolves
-        let at = glyph_of(p).name();
-        if let Some(rpm) = r.spin_rpm.filter(|&rpm| rpm > 30) {
+    // the beanie passed above, so the glyph resolves; its defaults (8, 96) are in range
+    let g = glyph_of(p);
+    if let Some(rig) = g.rig() {
+        let at = g.name();
+        if rig.rpm > 30 {
             return Err(Error::Invalid(format!(
-                "icon.{at}.rider.spin_rpm: {rpm} is above 30 (turns a minute; 0 = still)"
+                "icon.{at}.rider.spin_rpm: {} is above 30 (turns a minute; 0 = still)",
+                rig.rpm
             )));
         }
-        if r.bpm != 0 && !(40..=200).contains(&r.bpm) {
+        if !(40..=200).contains(&rig.bpm) {
             return Err(Error::Invalid(format!(
                 "icon.{at}.rider.bpm: {} is outside 40-200 (beats a minute; 0 = 96)",
-                r.bpm
+                rig.bpm
             )));
         }
     }
