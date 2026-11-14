@@ -1,13 +1,18 @@
 # bgsvg — trihexagonal animated SVG background builder
 
-Generates a self-contained `.svg`: a **hexagon lattice with sparse triangles**
-plus a **center icon**, light theme. Animation is pure CSS (no SMIL, no JS) and
+Generates a self-contained `.svg`. Two **moods** ship: `blueprint` (a
+**hexagon lattice with sparse triangles** plus a **center icon**, light theme)
+and `zine` (a black snow-culture print: a background of peaks, pines or a
+halfpipe, and a rider head on a spinning board or skis). Any background, icon
+and overlay combine across moods. Animation is pure CSS (no SMIL, no JS) and
 honours `prefers-reduced-motion` (which falls back to the clean static look).
 One Rust crate, no external assets. Sizes scale with `min(width, height)`,
 so pattern density is constant across resolutions.
 
-The graphic mood — and the rules for extending it without breaking it — is
-documented in [`docs/moods/blueprint/`](docs/moods/blueprint/).
+Each mood's graphic rules, and how to extend it without breaking it, are in
+[`docs/moods/blueprint/`](docs/moods/blueprint/) and
+[`docs/moods/zine/`](docs/moods/zine/). `mood::MOODS` is the public catalogue
+that tags every config choice with its moods.
 
 ## Animations
 
@@ -90,7 +95,7 @@ the icon).
 ```sh
 nix run .#bgsvg                           # the schema's defaults
 nix run .#bgsvg -- path/to/config.json
-nix run .#bgsvg -- --configs              # dump the 42-config corpus as JSON lines
+nix run .#bgsvg -- --configs              # dump the 145-config corpus as JSON lines
 nix develop -c cargo test                 # every check
 ```
 
@@ -124,6 +129,28 @@ so `{}` is a complete config.
 | `icon.hexatri.motion` | `ROTATE` | `ROTATE` `STATIC` |
 | `icon.ship` | — | no motion: the ship is static by design |
 | `overlay.matrix` | absent | `{ angle, color }` — `0`–`360`, `#rrggbb` or `#rrggbbaa` |
+| `background.summit` `.treeline` `.halfpipe` | — | zine grounds; each takes `snow`: `FLURRY` (default) `NO_SNOW` `BLIZZARD` |
+| `icon.punk` `.park` `.local` | — | zine rider heads, each with a `rider` block (below) and its own toggles |
+| `zine.spot` | `#e63946` | the spot ink behind every zine item in the scene: `#rrggbb`, no alpha. Inert with no zine item |
+| `…rider.gear` | `BOARD` | `BOARD` `CROSSED_SKIS` |
+| `…rider.spin_rpm` | `8` | turns a minute, `0`–`30`; `0` = the gear does not spin; unset = 8 |
+| `…rider.counter_clockwise` | `false` | spin direction; inert at `spin_rpm 0` |
+| `…rider.motion` | `STILL` | head only: `STILL` `BOB` `SWAY` |
+| `…rider.bpm` | `96` | `40`–`200` (`0` = 96); the beat every head animation shares; inert with none on |
+| `icon.punk.crest_wave` `.rainbow_flow` `.chatter` `.eyes` | off / `STILL` | spikes rock; crest colours travel (every 8 beats); lower teeth drop; `eyes: POP` |
+| `icon.park.pompom` `.lens_flow` `.glint` `.breath` `.beanie` | off / spot | pompom wobbles; lens colours travel; paper bar crosses the lens; puffs from the gaiter; beanie `#rrggbb` (no alpha) |
+| `icon.local.beard_wind` `.frost` `.glint` `.breath` | off | locks swing; frost crosses twinkle; glint on the wraparounds; puffs from the beard |
+
+Zine example, with every punk head animation on:
+
+```json
+{
+  "background": { "summit": { "snow": "BLIZZARD" } },
+  "icon": { "punk": { "rider": { "motion": "BOB", "bpm": 120 },
+                      "crest_wave": true, "rainbow_flow": true, "chatter": true, "eyes": "POP" } },
+  "zine": { "spot": "#22c8e5" }
+}
+```
 
 A resolution is a preset (`720p` `1080p` `1440p` `4k` `mobile` `tablet`
 `square` `ultrawide`) or `WIDTHxHEIGHT`. Empty means `1080p`.
@@ -143,8 +170,8 @@ One command runs every check; everything lives under `tests/`.
 nix develop -c cargo test
 ```
 
-Builds all 42 valid `background.trihex.motion` × `background.trihex.image` × `icon` ×
-`overlay` combinations and asserts the invariants:
+Builds every config in `params::valid_configs` (145: every background × icon ×
+overlay, plus each zine setting on a fixed base) and asserts the invariants:
 holder/intersector roles, the clear center, space-cell clearance and their
 opt-out of the fill flash, one blind per window layered *under* the
 triangles, every window sharing its own blind's phase, blinds and windows
@@ -156,7 +183,7 @@ an out-of-range matrix angle, a malformed colour, a malformed resolution,
 malformed JSON, and a missing config file.
 
 `tests/configs.rs` says the right code ran and the invariants hold; `tests/golden.rs`
-says the picture is unchanged and well-formed. `tests/golden/` holds those same 42
+says the picture is unchanged and well-formed. `tests/golden/` holds those same
 configs, each kept beside the SVG it renders:
 
 ```

@@ -8,9 +8,13 @@
 - [x] Python out of the toolchain — ADR [0013](adr/0013-run-the-golden-corpus-from-rust.md)
 - [x] One command runs every check — ADR [0014](adr/0014-one-command-runs-every-check.md)
 - [x] WASM target dropped; the UI links the crate — ADR [0015](adr/0015-drop-the-wasm-target.md)
+- [x] Moods and the zine mood — [spec](superpowers/specs/2026-11-13-moods-and-zine-design.md) · [plan](superpowers/plans/2026-11-13-moods-and-zine.md) · ADR [0016](adr/0016-moods-as-folders-and-a-catalogue.md) [0017](adr/0017-background-becomes-a-oneof.md)
 
 # Planned
 
+- [ ] A mood filter in `wallpaper.studio.ui` — list items by `mood::MOODS`, and adopt the
+  `background.trihex` schema (the studio pins this crate through `Cargo.lock`, so it keeps
+  working until someone runs `cargo update -p bgsvg`).
 - [ ] Field paths on `Error::Invalid` — only one cross-field rule exists today
   (`CLOSEOPEN` with `NONE`) and its message names both fields, so a consumer can
   place it without one. Revisit when a second cross-field rule appears.
@@ -19,4 +23,5 @@ ADRs are numbered in decision order, so `docs/adr/` reads chronologically:
 config schema, then the corpus, then the Rust port, then the template split,
 then the WASM target, then the last of the Python leaving and the checks
 collapsing into one command, then the WASM target leaving once the UI linked
-the crate directly.
+the crate directly, then moods (a folder and a catalogue each) and the schema
+change that let a background belong to one.

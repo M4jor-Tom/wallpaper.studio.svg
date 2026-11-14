@@ -387,9 +387,10 @@ pub fn parse_res(s: &str) -> Result<(u32, u32), Error> {
     Ok((w, h))
 }
 
-/// One config for every distinct picture `validate` allows; both test sweeps enumerate from here.
-/// A setting with no visible effect (a zine block on a blueprint page) is valid but never listed:
-/// the corpus rejects two configs that render the same SVG.
+/// At most one config per distinct picture (no two render the same SVG), with every setting reached
+/// at least once; both test sweeps enumerate from here. Zine settings are sampled one at a time on
+/// a fixed base, not crossed. A setting with no visible effect (a zine block on a blueprint page) is
+/// valid but never listed: the corpus rejects two configs that render the same SVG.
 /// Matrix angle and colour are non-default on purpose: defaults would skip the code they pin.
 pub fn valid_configs(seed: u32) -> Vec<serde_json::Value> {
     use serde_json::json;
