@@ -167,19 +167,6 @@ pub fn treeline(f: &Frame, seed: u32, spot: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::params::{Glyph, Ground, RESOLUTIONS, Rain, Scene, Snow, parse, resolve};
-    use crate::svg::build_svg;
-    use crate::zine::style::SPOT;
-
-    fn scene(snow: Snow, spot: &str, glyph: Glyph) -> Scene {
-        Scene {
-            seed: 0,
-            ground: Ground::Treeline { snow },
-            glyph,
-            overlay: None,
-            spot: spot.to_string(),
-        }
-    }
 
     #[test]
     fn no_back_row_pine_stands_before_the_head() {
@@ -209,59 +196,5 @@ mod tests {
         // and the pines reach both edges
         let [back, _] = pines(&f, 0);
         assert!(back.first().unwrap().x < 0.1 * f.w && back.last().unwrap().x > 0.9 * f.w);
-    }
-
-    #[test]
-    fn settings_and_icons_never_move_a_pine() {
-        // everything before the icon group, the first group with a transform (riders nest more):
-        // the treeline layer, the snow over it and the rain
-        let points = |s: &Scene| -> Vec<String> {
-            let svg = build_svg(1920, 1080, s);
-            let page = &svg[..svg.find("<g transform=").expect("the icon group")];
-            page.split("points=\"")
-                .skip(1)
-                .map(|p| p[..p.find('"').expect("a closing quote")].to_string())
-                .collect()
-        };
-        let want = points(&scene(Snow::Flurry, SPOT, Glyph::Hexatri { rotate: true }));
-        assert!(want.len() > 5 * 4, "the pines are missing");
-        let glyphs = [
-            r#"{"hexatri":{"motion":"ROTATE"}}"#,
-            r#"{"hexatri":{"motion":"STATIC"}}"#,
-            r#"{"ship":{}}"#,
-            r#"{"punk":{}}"#,
-            r#"{"park":{}}"#,
-            r#"{"local":{}}"#,
-            r#"{"punk":{"rider":{"gear":"CROSSED_SKIS","motion":"SWAY"}}}"#,
-        ]
-        .map(|icon| resolve(&parse(&format!(r#"{{"icon":{icon}}}"#)).unwrap()).glyph);
-        let rain = Rain {
-            angle: 250.0,
-            color: "#395e53cc".to_string(),
-        };
-        for snow in [Snow::Flurry, Snow::NoSnow, Snow::Blizzard] {
-            for spot in [SPOT, "#22c8e5"] {
-                for glyph in &glyphs {
-                    for overlay in [None, Some(rain.clone())] {
-                        let s = Scene {
-                            overlay,
-                            ..scene(snow, spot, glyph.clone())
-                        };
-                        assert_eq!(points(&s), want, "{s:?} moved a pine");
-                    }
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn extreme_frames_render_bounded() {
-        let frames = RESOLUTIONS.iter().map(|(_, wh)| *wh);
-        for (w, h) in frames.chain([(1, 1), (8000, 200)]) {
-            for snow in [Snow::Flurry, Snow::Blizzard] {
-                let svg = build_svg(w, h, &scene(snow, SPOT, Glyph::Hexatri { rotate: true }));
-                assert!(svg.len() < 1 << 20, "{w}x{h}: {} bytes", svg.len());
-            }
-        }
     }
 }

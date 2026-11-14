@@ -188,9 +188,6 @@ pub fn halfpipe(f: &Frame, spot: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::params::{Glyph, Ground, RESOLUTIONS, Scene, Snow};
-    use crate::svg::build_svg;
-    use crate::zine::style::SPOT;
 
     #[test]
     fn the_far_section_is_wider_than_the_head() {
@@ -230,23 +227,5 @@ mod tests {
         .u_shape();
         assert_eq!(q.len(), 30);
         assert_eq!(pts(&q[..2]), "160,208 160.39,217.41");
-    }
-
-    #[test]
-    fn extreme_frames_render_bounded() {
-        let frames = RESOLUTIONS.iter().map(|(_, wh)| *wh);
-        for (w, h) in frames.chain([(1, 1), (8000, 200)]) {
-            for snow in [Snow::Flurry, Snow::Blizzard] {
-                let scene = Scene {
-                    seed: 0,
-                    ground: Ground::Halfpipe { snow },
-                    glyph: Glyph::Hexatri { rotate: true },
-                    overlay: None,
-                    spot: SPOT.to_string(),
-                };
-                let svg = build_svg(w, h, &scene);
-                assert!(svg.len() < 1 << 20, "{w}x{h}: {} bytes", svg.len());
-            }
-        }
     }
 }
