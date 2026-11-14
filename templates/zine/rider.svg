@@ -1,7 +1,7 @@
 {# The shadow's offset wraps the spin, so it stays put on screen while the gear turns. #}
 {% macro spun() %}<g{% if let Some(s) = spin +%} class="zspin" style="{{ s }}"{% endif %}>{{ caller() }}</g>{% endmacro %}
 {# The head moves without the gear; shadow and outline move with it, so the sticker stays whole. #}
-{% macro moved() %}{% match motion %}{% when Move::Still %}{{ caller() }}{% when Move::Bob %}<g class="zbob">{{ caller() }}</g>{% when Move::Sway(pivot) %}<g class="zsway" style="{{ pivot }}">{{ caller() }}</g>{% endmatch %}{% endmacro %}
+{% macro moved() %}{% match motion %}{% when Motion::Still %}{{ caller() }}{% when Motion::Bob %}<g class="zbob">{{ caller() }}</g>{% when Motion::Sway %}<g class="zsway" style="{{ pivot }}">{{ caller() }}</g>{% endmatch %}{% endmacro %}
 {# The gear's deck, the board or one ski, cut the same for the silhouette and the art; the caller adds its turn or its paint. #}
 {% macro deck() %}<rect {%+ if skis %}x="-108" y="-13" width="216" height="26" rx="13"{% else %}x="-108" y="-21" width="216" height="42" rx="21"{% endif %}{{ caller() }}/>{% endmacro %}
 {% macro gear() %}{% if skis %}{% call deck() +%} transform="rotate(-32)"{% endcall %}{% call deck() +%} transform="rotate(32)"{% endcall %}{% else %}{% call deck() %}{% endcall %}{% endif %}{% endmacro %}

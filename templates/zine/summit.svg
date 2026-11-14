@@ -1,5 +1,5 @@
 {% macro peak(p) %}<polygon points="{{ p.tri }}" fill="{{ sheet }}"/><polyline points="{{ p.tri }}" fill="none" stroke="{{ paper }}" stroke-width="{{ line_w }}" stroke-linejoin="round"/><clipPath id="{{ p.id }}"><polygon points="{{ p.face }}"/></clipPath><g clip-path="url(#{{ p.id }})" stroke="{{ spot }}" stroke-width="{{ hatch_w }}"><path d="{{ p.hatch }}"/></g><polygon points="{{ p.cap }}" fill="{{ paper }}"/>{% endmacro %}
 {{ header }}
-{% for p in back %}{% call peak(p) %}{% endcall %}{% endfor %}
+{% for p in back %}{{ peak(p) }}{% endfor %}
 <rect y="{{ band_y }}" width="{{ ws }}" height="{{ band_h }}" fill="{{ sheet }}"/>
-{% for p in front %}{% call peak(p) %}{% endcall %}{% endfor %}
+{% for p in front %}{{ peak(p) }}{% endfor %}

@@ -2,6 +2,6 @@
 {% for t in p.tiers %}<polygon points="{{ t.tri }}" fill="{{ sheet }}" stroke="{{ paper }}" stroke-width="{{ line_w }}" stroke-linejoin="round"/><clipPath id="{{ t.id }}"><polygon points="{{ t.face }}"/></clipPath><g clip-path="url(#{{ t.id }})" stroke="{{ spot }}" stroke-width="{{ hatch_w }}"><path d="{{ t.hatch }}"/></g>{% endfor %}{% endmacro %}
 {{ header +}}
 <polygon points="{{ back_hill }}" fill="{{ sheet }}"/><polyline points="{{ back_ridge }}" fill="none" stroke="{{ paper }}" stroke-width="{{ ridge_w }}"/>
-{% for p in back %}{% call pine(p) %}{% endcall %}{% endfor %}
+{% for p in back %}{{ pine(p) }}{% endfor %}
 <polygon points="{{ front_hill }}" fill="{{ sheet }}"/><polyline points="{{ front_ridge }}" fill="none" stroke="{{ paper }}" stroke-width="{{ ridge_w }}"/>
-{% for p in front %}{% call pine(p) %}{% endcall %}{% endfor %}
+{% for p in front %}{{ pine(p) }}{% endfor %}
