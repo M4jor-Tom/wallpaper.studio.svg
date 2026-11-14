@@ -70,7 +70,8 @@ pub struct ParkLook {
     pub lens_flow: bool,
     pub glint: bool,
     pub breath: bool,
-    /// lowercase `#rrggbb`; `Scene.spot` when the config leaves it empty
+    /// lowercase `#rrggbb`; `Scene.spot` when the config leaves it empty. Reaches the template
+    /// verbatim and the escaper is a no-op, so it must have passed `validate`.
     pub beanie: String,
 }
 
@@ -114,7 +115,8 @@ pub struct Scene {
     pub ground: Ground,
     pub glyph: Glyph,
     pub overlay: Option<Rain>,
-    /// lowercase `#rrggbb`: the one ink every zine item prints in
+    /// lowercase `#rrggbb`: the one ink every zine item prints in. Reaches the templates verbatim
+    /// and the escaper is a no-op, so it must have passed `validate`.
     pub spot: String,
 }
 
@@ -219,6 +221,12 @@ fn spot_of(p: &Parameters) -> &str {
     p.zine.as_ref().map_or("", |z| z.spot.as_str())
 }
 
+/// The config as the renderer needs it: defaults filled in, colours normalised.
+///
+/// # Panics
+///
+/// On a `zine.spot` or `icon.park.beanie` that is not a hex colour: it expects a config that
+/// passed `validate`, as `load` does.
 pub fn resolve(p: &Parameters) -> Scene {
     let spot = match spot_of(p) {
         "" => SPOT.to_string(),
