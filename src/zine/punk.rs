@@ -202,6 +202,8 @@ pub fn head(p: &PunkLook) -> Sticker {
         silhouette: draw(false, p.crest_wave.then(|| "zwave".to_string())),
         art: draw(true, (!on.is_empty()).then(|| on.join(" "))),
         beats: !on.is_empty(),
+        // the disc's foot: the crest is all above it
+        neck: CY + R,
     }
 }
 

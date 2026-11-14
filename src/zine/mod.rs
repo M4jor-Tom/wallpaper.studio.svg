@@ -70,10 +70,9 @@ pub fn css(glyph: &Glyph) -> String {
                 ".zbob{animation:zbob var(--beat) ease-in-out infinite}",
                 "@keyframes zbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}",
             ),
-            // about the neck, the bottom of the head
+            // about the neck: the origin is inline, in glyph units on the default view-box
             Motion::Sway => concat!(
-                ".zsway{transform-box:fill-box;transform-origin:50% 100%;",
-                "animation:zsway calc(var(--beat)*2) ease-in-out infinite alternate}",
+                ".zsway{animation:zsway calc(var(--beat)*2) ease-in-out infinite alternate}",
                 "@keyframes zsway{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}",
             ),
         });

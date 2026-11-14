@@ -79,6 +79,8 @@ pub fn head(spot: &str, l: &LocalLook) -> Sticker {
         silhouette: draw(false),
         art: draw(true),
         beats: l.beard_wind || l.frost || l.glint || l.breath,
+        // the middle lock's tip, (4, 100)
+        neck: 100.0,
     }
 }
 

@@ -13,6 +13,9 @@ pub struct Sticker {
     pub art: String,
     /// some part of the head moves to the beat, so the rider must set one
     pub beats: bool,
+    /// the silhouette's lowest point on the head's axis, `(0, neck)` in glyph units: SWAY turns
+    /// shadow, outline and art about it alike
+    pub neck: f64,
 }
 
 /// Bottom to top: every shadow, every outline, then the art, so the outlines merge into one edge.
@@ -27,6 +30,8 @@ struct Rider<'a> {
     spin: Option<String>,
     /// the head groups' class; none when still, so the head rests centred
     motion: Option<&'static str>,
+    /// the sway groups' inline origin: the neck, one point for every copy
+    pivot: Option<String>,
     /// `--beat` for every head animation; none when nothing moves to it
     beat: Option<String>,
     head: &'a Sticker,
@@ -47,10 +52,14 @@ pub fn icon(spot: &str, rig: &Rig, head: &Sticker) -> String {
             fmt(60.0 / rig.rpm as f64)
         )
     });
-    let motion = match rig.motion {
-        Motion::Still => None,
-        Motion::Bob => Some("zbob"),
-        Motion::Sway => Some("zsway"),
+    let (motion, pivot) = match rig.motion {
+        Motion::Still => (None, None),
+        Motion::Bob => (Some("zbob"), None),
+        // in glyph units, not each group's own box: the art's box is not the outline's
+        Motion::Sway => (
+            Some("zsway"),
+            Some(format!("transform-origin:0 {}px", fmt(head.neck))),
+        ),
     };
     // in ms, so every bpm is exact to fmt's two decimals; the unit travels into each calc()
     let beat = (motion.is_some() || head.beats)
@@ -62,6 +71,7 @@ pub fn icon(spot: &str, rig: &Rig, head: &Sticker) -> String {
         skis: rig.gear == Gear::CrossedSkis,
         spin,
         motion,
+        pivot,
         beat,
         head,
     }
@@ -223,16 +233,50 @@ mod tests {
 
     #[test]
     fn head_motion_moves_the_head_alone() {
-        for (motion, class) in [("BOB", "zbob"), ("SWAY", "zsway")] {
+        for (motion, class, open) in [
+            ("BOB", "zbob", r#"<g class="zbob">"#),
+            (
+                "SWAY",
+                "zsway",
+                r#"<g class="zsway" style="transform-origin:0 64px">"#,
+            ),
+        ] {
             let p = punk_of(json!({"rider": {"motion": motion}}));
             let (svg, head) = (rendered(&p), punk::head(&p));
-            let moved = |part: &str| format!(r#"<g class="{class}">{part}</g>"#);
+            let moved = |part: &str| format!("{open}{part}</g>");
             // shadow and outline cut the moving shape, so the sticker stays one piece
             assert_eq!(svg.matches(&moved(&head.silhouette)).count(), 2, "{svg}");
             assert_eq!(svg.matches(&moved(&head.art)).count(), 1, "{svg}");
             assert_eq!(svg.matches(class).count(), 3, "the gear moved: {svg}");
         }
         assert!(!rendered(&punk_of(json!({}))).contains("zbob"));
+    }
+
+    #[test]
+    fn sway_turns_every_sticker_copy_about_one_neck() {
+        // a fill-box origin pivots each copy on its own box, and the art's (beard hatching, glint,
+        // breath) reaches past the outline's, so the art swung off its sticker
+        for (icon, neck) in [
+            (json!({"punk": {"rider": {"motion": "SWAY"}}}), 64),
+            (
+                json!({"park": {"rider": {"motion": "SWAY"}, "glint": true, "breath": true}}),
+                76,
+            ),
+            (json!({"local": {"rider": {"motion": "SWAY"}}}), 100),
+        ] {
+            let cfg = json!({"background": {"summit": {}}, "icon": icon}).to_string();
+            let svg = crate::svg::build_svg(640, 360, &resolve(&parse(&cfg).unwrap()));
+            let tags: Vec<_> = svg
+                .match_indices(r#"<g class="zsway""#)
+                .map(|(i, _)| &svg[i..=i + svg[i..].find('>').unwrap()])
+                .collect();
+            let pivot = format!(r#"<g class="zsway" style="transform-origin:0 {neck}px">"#);
+            assert_eq!(tags, [pivot.as_str(); 3], "shadow, outline, art: {cfg}");
+            // an inline origin is in glyph units only on the default view-box
+            let rule = &svg[svg.find(".zsway{").expect("the sway rule")..];
+            let rule = &rule[..rule.find('}').unwrap()];
+            assert!(!rule.contains("transform-"), "{rule}");
+        }
     }
 
     #[test]

@@ -92,6 +92,8 @@ pub fn head(spot: &str, p: &ParkLook) -> Sticker {
         silhouette: draw(false),
         art: draw(true),
         beats: p.pompom || p.lens_flow || p.glint || p.breath,
+        // the gaiter's foot: its lower edge 68 -> 84 -> 68 bottoms out at 76
+        neck: 76.0,
     }
 }
 

@@ -1,7 +1,7 @@
 {# The shadow's offset wraps the spin, so it stays put on screen while the gear turns. #}
 {% macro spun() %}<g{% if let Some(s) = spin +%} class="zspin" style="{{ s }}"{% endif %}>{{ caller() }}</g>{% endmacro %}
 {# The head moves without the gear; shadow and outline move with it, so the sticker stays whole. #}
-{% macro moved() %}{% if let Some(m) = motion %}<g class="{{ m }}">{{ caller() }}</g>{% else %}{{ caller() }}{% endif %}{% endmacro %}
+{% macro moved() %}{% if let Some(m) = motion %}<g class="{{ m }}"{% if let Some(p) = pivot +%} style="{{ p }}"{% endif %}>{{ caller() }}</g>{% else %}{{ caller() }}{% endif %}{% endmacro %}
 {% macro gear() %}{% if skis %}<rect x="-108" y="-13" width="216" height="26" rx="13" transform="rotate(-32)"/><rect x="-108" y="-13" width="216" height="26" rx="13" transform="rotate(32)"/>{% else %}<rect x="-108" y="-21" width="216" height="42" rx="21"/>{% endif %}{% endmacro %}
 {% macro ski(turn) %}<g transform="{{ turn }}"><rect x="-108" y="-13" width="216" height="26" rx="13" fill="{{ ink }}" stroke="{{ paper }}" stroke-width="3"/><rect x="-80" y="-2.5" width="160" height="5" rx="2.5" fill="{{ spot }}"/><path d="M-88 -12V12M88 -12V12" stroke="{{ paper }}" stroke-width="1.6"/><rect x="-15" y="-9" width="30" height="18" rx="4" fill="{{ paper }}"/></g>{% endmacro %}
 {% if let Some(b) = beat %}<g style="{{ b }}">{% endif %}<g fill="{{ spot }}" stroke="{{ spot }}" stroke-width="12" stroke-linejoin="round"><g transform="translate(4,5)">{% call spun() %}{{ gear() }}{% endcall %}{% call moved() %}{{ head.silhouette }}{% endcall %}</g></g>
