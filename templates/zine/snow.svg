@@ -1,5 +1,5 @@
 <pattern id="zsnow" width="{{ tw }}" height="{{ th }}" patternUnits="userSpaceOnUse"><g fill="{{ paper }}">
 {% for f in flakes %}<rect x="{{ f.x }}" y="{{ f.y }}" width="{{ f.d }}" height="{{ f.d }}" fill-opacity="{{ f.o }}"/>{% endfor %}
 </g><g stroke="{{ paper }}" stroke-width="{{ sw }}">
-{% for l in streaks %}<line x1="{{ l.x1 }}" y1="{{ l.y1 }}" x2="{{ l.x2 }}" y2="{{ l.y2 }}" stroke-opacity="{{ l.o }}"/>{% endfor %}
+{% for l in streaks %}<path d="{{ l.d }}" stroke-opacity="{{ l.o }}"/>{% endfor %}
 </g></pattern><rect class="{{ class }}" y="{{ y }}" width="{{ rw }}" height="{{ rh }}" fill="url(#zsnow)" style="{{ style }}"/>

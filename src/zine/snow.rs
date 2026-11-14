@@ -16,10 +16,8 @@ struct Flake {
 }
 
 struct Streak {
-    x1: String,
-    y1: String,
-    x2: String,
-    y2: String,
+    /// path data: the start, then the one delta every streak shares
+    d: String,
     o: String,
 }
 
@@ -63,15 +61,13 @@ pub fn snow(f: &Frame, seed: u32, kind: Snow) -> String {
             (360.0, 360.0, "zflurry", (0.0, 360.0))
         }
         Snow::Blizzard => {
+            // a (-5, 9) streak, about 10 long, slanted with the drift
+            let delta = format!("l{} {}", fmt(-5.0 * s), fmt(9.0 * s));
             for _ in 0..340 {
-                // a (-5, 9) streak, about 10 long, slanted with the drift
                 let (x, y) = (rng.uniform(5.0, 360.0), rng.uniform(0.0, 711.0));
                 let o = rng.uniform(0.4, 0.9);
                 streaks.push(Streak {
-                    x1: fmt(x * s),
-                    y1: fmt(y * s),
-                    x2: fmt((x - 5.0) * s),
-                    y2: fmt((y + 9.0) * s),
+                    d: format!("M{} {}{delta}", fmt(x * s), fmt(y * s)),
                     o: fmt(o),
                 });
             }
